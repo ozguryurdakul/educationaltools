@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FrameAnalysisGUI v1.1</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy: #0D1B2A; --panel: #10192A; --panel2: #172234;
+  --blue: #1E88E5; --blue2: #1565C0; --teal: #00ACC1;
+  --green: #388E3C; --red: #C62828; --amber: #F57C00; --gold: #FFD740;
+  --surf: #FFFFFF; --surf2: #F0F4FB; --bdr: #C4D0E4; --bdr2: #1E3050;
+  --txt: #1A2436; --muted: #788CA0; --mono: 'JetBrains Mono',monospace;
+  --sans: 'Barlow',sans-serif; --cond: 'Barlow Condensed',sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { font-family: var(--sans); background: var(--navy); color: var(--txt); display: flex; flex-direction: column; }
+
+/* ── Header ── */
+.hdr {
+  background: linear-gradient(90deg, #091422 0%, #0f2040 100%);
+  border-bottom: 2px solid var(--blue2);
+  display: flex; align-items: center; padding: 0 16px; height: 46px; flex-shrink: 0; gap: 14px;
+}
+.hdr-logo { font-family: var(--cond); font-size: 20px; font-weight: 700; color: #fff; letter-spacing: .06em; }
+.hdr-logo em { color: var(--blue); font-style: normal; }
+.hdr-sub { font-family: var(--cond); font-size: 11px; color: #3A5878; letter-spacing: .08em; border-left: 1px solid #1E3050; padding-left: 14px; white-space: nowrap; }
+.hdr-auth { margin-left: auto; font-size: 10.5px; color: #3A5878; text-align: right; line-height: 1.55; }
+.cite-line { font-size: 9.5px; color: #2A4060; font-style: italic; }
+.cite-line a { color: #3A7090; text-decoration: none; }
+.cite-line a:hover { text-decoration: underline; }
+
+/* ── Toolbar ── */
+.tb { background: #09131E; border-bottom: 1px solid var(--bdr2); display: flex; align-items: center; padding: 5px 10px; gap: 7px; flex-shrink: 0; flex-wrap: wrap; }
+.btn {
+  height: 28px; padding: 0 13px; border: none; border-radius: 3px;
+  font-family: var(--sans); font-size: 12px; font-weight: 600;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+  transition: filter .12s; white-space: nowrap;
+}
+.btn:hover { filter: brightness(1.12); } .btn:active { filter: brightness(.9); }
+.b-blue   { background: #1565C0; color: #fff; }
+.b-green  { background: #2E7D32; color: #fff; }
+.b-red    { background: #B71C1C; color: #fff; }
+.b-gray   { background: #37474F; color: #CFD8DC; }
+.b-navy   { background: #1A237E; color: #fff; }
+.b-brown  { background: #4E342E; color: #fff; }
+.b-teal   { background: #00695C; color: #fff; }
+.vsep { width: 1px; height: 22px; background: var(--bdr2); margin: 0 2px; }
+.lbl { font-size: 11.5px; color: #4A6080; font-weight: 500; white-space: nowrap; }
+.sinp {
+  width: 66px; height: 26px; background: #172234; border: 1px solid var(--bdr2);
+  border-radius: 3px; color: #90B8D8; font-family: var(--mono);
+  font-size: 12px; text-align: center; padding: 0 4px; outline: none;
+}
+.sinp:focus { border-color: var(--blue); }
+.st { margin-left: auto; font-size: 11px; color: #3A5878; font-style: italic;
+  max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Main layout ── */
+.main { flex: 1; display: flex; overflow: hidden; }
+
+/* ── Left panel ── */
+.left { width: 430px; flex-shrink: 0; background: var(--surf); border-right: 1px solid var(--bdr); display: flex; flex-direction: column; overflow: hidden; }
+.tnav { display: flex; background: var(--panel); border-bottom: 2px solid var(--bdr2); overflow-x: auto; flex-shrink: 0; }
+.tnav::-webkit-scrollbar { height: 0; }
+.ttab {
+  padding: 6px 9px; font-family: var(--cond); font-size: 10.5px; font-weight: 700;
+  letter-spacing: .07em; color: #3A5878; background: none; border: none;
+  cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent;
+  margin-bottom: -2px; transition: all .15s;
+}
+.ttab.on { color: var(--blue); border-bottom-color: var(--blue); background: rgba(30,136,229,.08); }
+.ttab:hover:not(.on) { color: #80A0C0; }
+
+.tpnl { display: none; flex-direction: column; flex: 1; overflow: hidden; padding: 10px 12px; gap: 7px; }
+.tpnl.on { display: flex; }
+.ptit { font-family: var(--cond); font-size: 14px; font-weight: 700; color: var(--navy); letter-spacing: .02em; flex-shrink: 0; }
+.phnt { font-size: 11px; color: #5070A0; line-height: 1.55; background: #EEF4FF; border-left: 3px solid var(--blue); padding: 4px 8px; border-radius: 0 3px 3px 0; flex-shrink: 0; }
+
+/* ── Data tables ── */
+.twrap { flex: 1; overflow: auto; border: 1px solid var(--bdr); border-radius: 4px; }
+.dt { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11.5px; }
+.dt th {
+  background: var(--panel2); color: #5878A8; font-family: var(--cond); font-size: 10px;
+  font-weight: 700; letter-spacing: .07em; padding: 5px 6px; border: 1px solid var(--bdr2);
+  text-align: center; position: sticky; top: 0; z-index: 1; white-space: nowrap;
+}
+.dt td { border: 1px solid #E0E8F4; padding: 0; }
+.dt td.xi { background: var(--surf2); color: #9090A0; text-align: center; font-size: 10.5px; padding: 4px 5px; width: 28px; pointer-events: none; }
+.dt input[type=number] {
+  width: 100%; border: none; background: transparent; font-family: var(--mono);
+  font-size: 11.5px; color: var(--txt); padding: 4px 5px; text-align: center; outline: none;
+  -moz-appearance: textfield;
+}
+.dt input[type=number]::-webkit-inner-spin-button,
+.dt input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+.dt input[type=number]:focus { background: #EBF5FF; }
+.dt tr:hover td:not(.xi) { background: #F5F9FF; }
+.tbtns { display: flex; gap: 5px; flex-shrink: 0; }
+.tbtn {
+  height: 25px; padding: 0 11px; border: 1px solid var(--bdr); border-radius: 3px;
+  font-family: var(--sans); font-size: 11.5px; font-weight: 500; cursor: pointer;
+  background: var(--surf2); color: #556070; transition: all .12s;
+}
+.tbtn.add   { color: #1565C0; border-color: #1565C0; }
+.tbtn.add:hover { background: #E3F2FD; }
+.tbtn.rem   { color: #B71C1C; border-color: #B71C1C; }
+.tbtn.rem:hover { background: #FFEBEE; }
+.tbtn.clr   { color: #4E342E; border-color: #6D4C41; }
+.tbtn.clr:hover { background: #FBE9E7; }
+
+/* ── Right panel ── */
+.right { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #0C1524; }
+.vnav { display: flex; background: #081018; border-bottom: 1px solid var(--bdr2); padding: 3px 8px; gap: 3px; flex-shrink: 0; }
+.vbtn {
+  padding: 4px 10px; font-family: var(--cond); font-size: 11px; font-weight: 700;
+  letter-spacing: .06em; background: none; border: 1px solid transparent;
+  border-radius: 3px; color: #3A5878; cursor: pointer; transition: all .15s;
+}
+.vbtn.on { background: rgba(30,136,229,.15); border-color: var(--blue); color: var(--blue); }
+.vbtn:hover:not(.on) { color: #6090A0; border-color: var(--bdr2); }
+
+.cwrap { flex: 1; position: relative; overflow: hidden; }
+canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+/* ── Results panel ── */
+.rsp { background: #07101A; border-top: 1px solid var(--bdr2); max-height: 175px; overflow: auto; display: none; flex-shrink: 0; }
+.rsp.on { display: block; }
+.rsp table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 10.5px; }
+.rsp caption { font-family: var(--cond); font-size: 10.5px; font-weight: 700; color: #3A5878; letter-spacing: .08em; text-align: left; padding: 5px 10px 2px; }
+.rsp th { background: #050D16; color: #2A4060; font-family: var(--cond); font-size: 9.5px; font-weight: 700; letter-spacing: .07em; padding: 3px 10px; text-align: center; border: 1px solid #101E2E; }
+.rsp td { color: #5A90B8; padding: 2px 10px; text-align: right; border: 1px solid #0D1C2C; }
+.rsp td:first-child { text-align: center; color: #2A4060; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-logo">Frame<em>AnalysisGUI</em></div>
+  <div class="hdr-sub">2D Frame Analysis &nbsp;·&nbsp; Direct Stiffness Method &nbsp;·&nbsp; Linear-Elastic Static</div>
+  <div class="hdr-auth">
+    doc. Ing. Özgür Yurdakul, Ph.D. &nbsp;|&nbsp; Faculty of Transport Engineering, University of Pardubice<br>
+    v1.1 (April 2026) &nbsp;·&nbsp; Units: kN, m, kN·m &nbsp;·&nbsp; CC BY-NC-SA 4.0<br>
+    <span class="cite-line">Yurdakul, Ö. (2026). <em>FrameAnalysisGUI</em>: A web-based 2D frame analysis tool (Direct Stiffness Method). Univ. of Pardubice.
+    Available at: <a href="https://ozguryurdakul.github.io/educationaltools/FrameAnalysisGUI_v1_1.html" target="_blank">ozguryurdakul.github.io/educationaltools</a></span>
+  </div>
+</div>
+
+<!-- TOOLBAR -->
+<div class="tb">
+  <button class="btn b-blue"  onclick="doUpdatePlot()">↻ Update Plot</button>
+  <button class="btn b-green" onclick="doAnalyze()">▶ Analyze</button>
+  <button class="btn b-red"   onclick="doClear()">✕ Clear</button>
+  <button class="btn b-gray"  onclick="doReset()">◻ Reset View</button>
+  <div class="vsep"></div>
+  <span class="lbl">Deformation Scale:</span>
+  <input type="number" id="scl" class="sinp" value="1" min="0" step="0.5">
+  <div class="vsep"></div>
+  <button class="btn b-navy"  onclick="doSave()">💾 Save Project</button>
+  <button class="btn b-brown" onclick="doLoad()">📂 Load Project</button>
+  <div class="vsep"></div>
+  <button class="btn b-teal"  onclick="doCite()" title="Copy citation to clipboard">📋 Cite</button>
+  <span class="st" id="stmsg">Ready — enter structure data and click Analyze.</span>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT: TABS -->
+  <div class="left">
+    <div class="tnav">
+      <button class="ttab on"  data-tab="nodes">NODES</button>
+      <button class="ttab"     data-tab="elems">ELEMENTS</button>
+      <button class="ttab"     data-tab="mats">MATERIALS</button>
+      <button class="ttab"     data-tab="sups">SUPPORTS</button>
+      <button class="ttab"     data-tab="nlds">NODAL LOADS</button>
+      <button class="ttab"     data-tab="mlds">MEMBER LOADS</button>
+    </div>
+
+    <div class="tpnl on" id="tp-nodes">
+      <div class="ptit">Node Coordinates</div>
+      <div class="phnt">Sign convention: Y-axis downward positive · Clockwise moment positive</div>
+      <div class="twrap"><table class="dt" id="t-nodes">
+        <thead><tr><th>#</th><th>X [m]</th><th>Y [m]</th></tr></thead><tbody></tbody>
+      </table></div>
+      <div class="tbtns">
+        <button class="tbtn add" onclick="addRow('nodes')">+ Add Node</button>
+        <button class="tbtn rem" onclick="remRow('nodes')">− Remove Last</button>
+      </div>
+    </div>
+
+    <div class="tpnl" id="tp-elems">
+      <div class="ptit">Connectivity &amp; End Releases</div>
+      <div class="phnt">Release: 0 Fixed-Fixed · 1 Hinge at j · 2 Hinge at i · 3 Both Hinged</div>
+      <div class="twrap"><table class="dt" id="t-elems">
+        <thead><tr><th>#</th><th>Node i</th><th>Node j</th><th>Prop ID</th><th>Release</th></tr></thead><tbody></tbody>
+      </table></div>
+      <div class="tbtns">
+        <button class="tbtn add" onclick="addRow('elems')">+ Add Element</button>
+        <button class="tbtn rem" onclick="remRow('elems')">− Remove Last</button>
+      </div>
+    </div>
+
+    <div class="tpnl" id="tp-mats">
+      <div class="ptit">Material / Section Properties</div>
+      <div class="twrap"><table class="dt" id="t-mats">
+        <thead><tr><th>#</th><th>Area [m²]</th><th>Inertia [m⁴]</th><th>E [kPa]</th></tr></thead><tbody></tbody>
+      </table></div>
+      <div class="tbtns">
+        <button class="tbtn add" onclick="addRow('mats')">+ Add Property</button>
+        <button class="tbtn rem" onclick="remRow('mats')">− Remove Last</button>
+      </div>
+    </div>
+
+    <div class="tpnl" id="tp-sups">
+      <div class="ptit">Supports &nbsp;<small style="font-weight:400;font-size:12px">(1 = Restrained, 0 = Free)</small></div>
+      <div class="twrap"><table class="dt" id="t-sups">
+        <thead><tr><th>Node</th><th>Dx</th><th>Dy</th><th>Rz</th></tr></thead><tbody></tbody>
+      </table></div>
+      <div class="tbtns">
+        <button class="tbtn add" onclick="addRow('sups')">+ Add Support</button>
+        <button class="tbtn rem" onclick="remRow('sups')">− Remove Last</button>
+      </div>
+    </div>
+
+    <div class="tpnl" id="tp-nlds">
+      <div class="ptit">Nodal Loads</div>
+      <div class="phnt">Fx [kN] · Fy [kN] · Mz [kN·m] &nbsp;|&nbsp; Downward Fy = Positive · Clockwise Mz = Positive</div>
+      <div class="twrap"><table class="dt" id="t-nlds">
+        <thead><tr><th>Node</th><th>Fx [kN]</th><th>Fy [kN]</th><th>Mz [kN·m]</th></tr></thead><tbody></tbody>
+      </table></div>
+      <div class="tbtns">
+        <button class="tbtn add" onclick="addRow('nlds')">+ Add Load</button>
+        <button class="tbtn rem" onclick="remRow('nlds')">− Remove Last</button>
+      </div>
+    </div>
+
+    <div class="tpnl" id="tp-mlds">
+      <div class="ptit">Member Loads</div>
+      <div class="phnt">Type 1 = Point Force · Type 2 = Point Moment · Type 3 = UDL<br>
+        a_param: dist from node i [m] (0 = full span for UDL)</div>
+      <div class="twrap"><table class="dt" id="t-mlds">
+        <thead><tr><th>Elem ID</th><th>Type (1/2/3)</th><th>Magnitude</th><th>a_param [m]</th></tr></thead><tbody></tbody>
+      </table></div>
+      <div class="tbtns">
+        <button class="tbtn add" onclick="addRow('mlds')">+ Add Member Load</button>
+        <button class="tbtn rem" onclick="remRow('mlds')">− Remove Last</button>
+        <button class="tbtn clr" onclick="clrTbl('mlds')">Clear All</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: CANVAS -->
+  <div class="right">
+    <div class="vnav">
+      <button class="vbtn on" data-v="preview">PREVIEW</button>
+      <button class="vbtn"    data-v="deformed">DEFORMED</button>
+      <button class="vbtn"    data-v="reactions">REACTIONS</button>
+      <button class="vbtn"    data-v="axial">AXIAL (N)</button>
+      <button class="vbtn"    data-v="shear">SHEAR (V)</button>
+      <button class="vbtn"    data-v="moment">MOMENT (M)</button>
+    </div>
+    <div class="cwrap"><canvas id="cv"></canvas></div>
+    <div class="rsp" id="rsp">
+      <table>
+        <caption>NODAL DISPLACEMENTS &nbsp;(Dy: downward = positive)</caption>
+        <thead><tr><th>Node</th><th>Dx [m]</th><th>Dy [m]</th><th>Rz [rad]</th></tr></thead>
+        <tbody id="rb-disp"></tbody>
+      </table>
+      <table style="margin-top:3px">
+        <caption>MEMBER LOCAL FORCES</caption>
+        <thead><tr><th>Elem</th><th>Fx_i [kN]</th><th>Fy_i [kN]</th><th>Mz_i [kN·m]</th><th>Fx_j [kN]</th><th>Fy_j [kN]</th><th>Mz_j [kN·m]</th></tr></thead>
+        <tbody id="rb-frc"></tbody>
+      </table>
+      <table style="margin-top:3px" id="rt-rxn" style="display:none">
+        <caption>SUPPORT REACTIONS &nbsp;(Rx: rightward+, Ry: downward+, Mz: CW+)</caption>
+        <thead><tr><th>Node</th><th>Rx [kN]</th><th>Ry [kN]</th><th>Mz [kN·m]</th></tr></thead>
+        <tbody id="rb-rxn"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+const ST = {
+  nodes: [[1,0,0],[2,6,0]],
+  elems: [[1,1,2,1,0]],
+  mats:  [[1,0.15,4.5e-3,20e6]],
+  sups:  [[1,1,1,1]],
+  nlds:  [[2,0,10,0]],
+  mlds:  [[1,3,5,0]],
+  res: null,
+  view: 'preview'
+};
+const TDEFS = {
+  nodes:{ auto:true,  def:()=>[0,0] },
+  elems:{ auto:true,  def:()=>[1,2,1,0] },
+  mats: { auto:true,  def:()=>[0,0,0] },
+  sups: { auto:false, def:()=>[1,1,1,0] },
+  nlds: { auto:false, def:()=>[1,0,0,0] },
+  mlds: { auto:false, def:()=>[1,3,0,0] },
+};
+
+// ============================================================
+// TABLE MANAGEMENT
+// ============================================================
+function renderTbl(nm) {
+  const data = ST[nm];
+  const { auto } = TDEFS[nm];
+  const tbody = document.querySelector(`#t-${nm} tbody`);
+  tbody.innerHTML = '';
+  data.forEach((row, ri) => {
+    const tr = document.createElement('tr');
+    if (auto) {
+      const td = document.createElement('td'); td.className = 'xi'; td.textContent = row[0]; tr.appendChild(td);
+    }
+    const vals = auto ? row.slice(1) : row;
+    vals.forEach((val, fi) => {
+      const td = document.createElement('td');
+      const inp = document.createElement('input'); inp.type = 'number'; inp.step = 'any'; inp.value = val;
+      const ci = fi + (auto ? 1 : 0);
+      inp.addEventListener('change', () => { ST[nm][ri][ci] = parseFloat(inp.value) || 0; });
+      td.appendChild(inp); tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+}
+function addRow(nm) {
+  const { auto, def } = TDEFS[nm];
+  const d = def();
+  if (auto) ST[nm].push([ST[nm].length + 1, ...d]);
+  else ST[nm].push(d);
+  renderTbl(nm);
+}
+function remRow(nm) { if (ST[nm].length > 0) { ST[nm].pop(); renderTbl(nm); } }
+function clrTbl(nm) { ST[nm] = []; renderTbl(nm); }
+function initTbls() { Object.keys(TDEFS).forEach(nm => renderTbl(nm)); }
+
+// Tab switching
+document.querySelectorAll('.ttab').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.ttab').forEach(x => x.classList.remove('on'));
+  document.querySelectorAll('.tpnl').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  document.getElementById('tp-' + b.dataset.tab).classList.add('on');
+}));
+// View switching
+document.querySelectorAll('.vbtn').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.vbtn').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  ST.view = b.dataset.v;
+  draw();
+}));
+
+// ============================================================
+// MATRIX MATH
+// ============================================================
+const Z  = (n, m) => Array.from({length:n}, () => Array(m).fill(0));
+const Tp = A => A[0].map((_,j) => A.map(r => r[j]));
+function MM(A, B) {
+  const R = Z(A.length, B[0].length);
+  for (let i = 0; i < A.length; i++)
+    for (let j = 0; j < B[0].length; j++)
+      for (let k = 0; k < B.length; k++) R[i][j] += A[i][k]*B[k][j];
+  return R;
+}
+const MV = (A, v) => A.map(r => r.reduce((s,a,j) => s+a*v[j], 0));
+const VA = (a, b) => a.map((v, i) => v+b[i]);
+
+function solveGE(Kin, Fin) {
+  const n = Fin.length;
+  const A = Kin.map((r, i) => [...r, Fin[i]]);
+  for (let col = 0; col < n; col++) {
+    let mx = col;
+    for (let r = col+1; r < n; r++) if (Math.abs(A[r][col]) > Math.abs(A[mx][col])) mx = r;
+    [A[col], A[mx]] = [A[mx], A[col]];
+    if (Math.abs(A[col][col]) < 1e-16) continue;
+    for (let r = 0; r < n; r++) {
+      if (r === col) continue;
+      const f = A[r][col] / A[col][col];
+      for (let j = col; j <= n; j++) A[r][j] -= f * A[col][j];
+    }
+  }
+  return A.map((row, i) => Math.abs(row[i]) < 1e-16 ? 0 : row[n] / row[i]);
+}
+
+// ============================================================
+// DSM ENGINE
+// ============================================================
+function buildKlocal(E, A, I, L, rel) {
+  const k1 = E*A/L, kl = Z(6,6);
+  let k2, k3, k4, k5;
+  if (rel === 0) {
+    k2=12*E*I/L**3; k3=6*E*I/L**2; k4=4*E*I/L; k5=2*E*I/L;
+    kl[0][0]=k1; kl[0][3]=-k1; kl[3][0]=-k1; kl[3][3]=k1;
+    kl[1][1]=k2; kl[1][2]=-k3; kl[1][4]=-k2; kl[1][5]=-k3;
+    kl[2][1]=-k3; kl[2][2]=k4; kl[2][4]=k3; kl[2][5]=k5;
+    kl[4][1]=-k2; kl[4][2]=k3; kl[4][4]=k2; kl[4][5]=k3;
+    kl[5][1]=-k3; kl[5][2]=k5; kl[5][4]=k3; kl[5][5]=k4;
+  } else if (rel === 1) {
+    k2=3*E*I/L**3; k3=3*E*I/L**2; k4=3*E*I/L;
+    kl[0][0]=k1; kl[0][3]=-k1; kl[3][0]=-k1; kl[3][3]=k1;
+    kl[1][1]=k2; kl[1][2]=-k3; kl[1][4]=-k2;
+    kl[2][1]=-k3; kl[2][2]=k4; kl[2][4]=k3;
+    kl[4][1]=-k2; kl[4][2]=k3; kl[4][4]=k2;
+  } else if (rel === 2) {
+    k2=3*E*I/L**3; k3=3*E*I/L**2; k4=3*E*I/L;
+    kl[0][0]=k1; kl[0][3]=-k1; kl[3][0]=-k1; kl[3][3]=k1;
+    kl[1][1]=k2; kl[1][4]=-k2; kl[1][5]=-k3;
+    kl[4][1]=-k2; kl[4][4]=k2; kl[4][5]=k3;
+    kl[5][1]=-k3; kl[5][4]=k3; kl[5][5]=k4;
+  } else { // rel === 3
+    kl[0][0]=k1; kl[0][3]=-k1; kl[3][0]=-k1; kl[3][3]=k1;
+  }
+  return kl;
+}
+
+function buildFEM(type, mag, ap, L, rel) {
+  const f = Array(6).fill(0);
+  if (!type || mag === 0) return f;
+  const a = ap, b = L - a;
+  switch (rel) {
+    case 0:
+      if (type===1) {
+        if(a<=0||a>=L) return f;
+        f[1]=-(b**2*(3*L-2*b)*mag)/L**3; f[2]=(a*b**2*mag)/L**2;
+        f[4]=-(a**2*(3*L-2*a)*mag)/L**3; f[5]=-(a**2*b*mag)/L**2;
+      } else if (type===2) {
+        if(a<=0||a>=L) return f;
+        f[1]=-(6*a*b*mag)/L**3; f[2]=(b*(2*L-3*b)*mag)/L**2;
+        f[4]=(6*a*b*mag)/L**3; f[5]=(a*(2*L-3*a)*mag)/L**2;
+      } else if (type===3) {
+        const av = (ap===0)?L:ap;
+        f[1]=-mag*(2*av*L**3-2*av**3*L+av**4)/(2*L**3);
+        f[2]=mag*(6*av**2*L**2-8*av**3*L+3*av**4)/(12*L**2);
+        f[4]=-mag*(2*av**3*L-av**4)/(2*L**3);
+        f[5]=-mag*(4*av**3*L-3*av**4)/(12*L**2);
+      } break;
+    case 1:
+      if (type===1) {
+        if(a<=0||a>=L) return f;
+        f[1]=-b*(3*L**2-b**2)*mag/(2*L**3); f[2]=a*b*(L+b)*mag/(2*L**2);
+        f[4]=-a**2*(3*L-a)*mag/(2*L**3);
+      } else if (type===2) {
+        if(a<=0||a>=L) return f;
+        f[1]=-3*(L**2-b**2)*mag/(2*L**3); f[2]=(L**2-3*b**2)*mag/(2*L**2);
+        f[4]=3*(L**2-b**2)*mag/(2*L**3);
+      } else if (type===3) {
+        const av=(ap===0)?L:ap;
+        f[1]=-mag*(8*av*L**3-4*av**3*L+av**4)/(8*L**3);
+        f[2]=mag*av**2*(2*L-av)**2/(8*L**2);
+        f[4]=-mag*av**3*(4*L-av)/(8*L**3);
+      } break;
+    case 2:
+      if (type===1) {
+        if(a<=0||a>=L) return f;
+        f[1]=-b**2*(3*L-b)*mag/(2*L**3);
+        f[4]=-a*(3*L**2-a**2)*mag/(2*L**3); f[5]=-a*b*(L+a)*mag/(2*L**2);
+      } else if (type===2) {
+        if(a<=0||a>=L) return f;
+        f[1]=-3*(L**2-a**2)*mag/(2*L**3);
+        f[4]=3*(L**2-a**2)*mag/(2*L**3); f[5]=(L**2-3*a**2)*mag/(2*L**2);
+      } else if (type===3) {
+        const av=(ap===0)?L:ap;
+        f[1]=-mag*(8*av*L**3-6*av**2*L**2+av**4)/(8*L**3);
+        f[4]=-mag*av**2*(6*L**2-av**2)/(8*L**3);
+        f[5]=-mag*av**2*(2*L**2-av**2)/(8*L**2);
+      } break;
+    case 3:
+      if (type===1) {
+        if(a<=0||a>=L) return f;
+        f[1]=-mag*b/L; f[4]=-mag*a/L;
+      } else if (type===2) {
+        if(a<=0||a>=L) return f;
+        f[1]=-mag/L; f[4]=mag/L;
+      } else if (type===3) {
+        const av=(ap===0)?L:ap;
+        f[1]=-mag*av*(2*L-av)/(2*L); f[4]=-mag*av**2/(2*L);
+      } break;
+  }
+  return f;
+}
+
+function doAnalyze() {
+  setst('Running DSM analysis…');
+  try {
+    const {nodes, elems, mats, sups, nlds, mlds} = ST;
+    const N=nodes.length, NE=elems.length;
+    if (!N||!NE) { setst('Error: need ≥1 node and ≥1 element.'); return; }
+
+    // DOF map
+    const Emap = Array.from({length:N}, ()=>[0,0,0]);
+    for (const s of sups) {
+      const ni = s[0]-1; if (ni<0||ni>=N) continue;
+      if (s[1]) Emap[ni][0] = -1;
+      if (s[2]) Emap[ni][1] = -1;
+      if (s[3]) Emap[ni][2] = -1;
+    }
+    let cnt=0;
+    for (let i=0;i<N;i++) for (let d=0;d<3;d++) {
+      if (Emap[i][d]===0) { cnt++; Emap[i][d]=cnt; } else Emap[i][d]=0;
+    }
+    const NEq=cnt;
+    if (!NEq) { setst('Error: all DOFs are restrained — check supports.'); return; }
+
+    // Assemble global stiffness
+    const KG = Z(NEq, NEq);
+    const ED = [];
+
+    for (let i=0; i<NE; i++) {
+      const el=elems[i];
+      const ni=el[1]-1, nj=el[2]-1, pid=el[3], rel=el[4];
+      if (ni<0||ni>=N||nj<0||nj>=N) { setst(`Error: element ${i+1} references nonexistent node.`); return; }
+      const mat=mats.find(m=>m[0]===pid);
+      if (!mat) { setst(`Error: property ID ${pid} not found.`); return; }
+      const [,A,Ix,Emod]=mat;
+      const [,xs,ys]=nodes[ni], [,xe,ye]=nodes[nj];
+      const dX=xe-xs, dY=ye-ys;
+      const L=Math.sqrt(dX*dX+dY*dY);
+      if (L<1e-10) { setst(`Error: element ${i+1} has zero length.`); return; }
+
+      // ang = -atan2(dY, dX)  [MATLAB convention]
+      const ang=-Math.atan2(dY, dX);
+      const c=Math.cos(ang), s=Math.sin(ang);
+      const Tm=[
+        [c, s, 0, 0, 0, 0], [-s,c, 0, 0, 0, 0], [0,0, 1, 0, 0, 0],
+        [0, 0, 0, c, s, 0], [ 0,0, 0,-s, c, 0], [0,0, 0, 0, 0, 1]
+      ];
+      const Tt=Tp(Tm);
+      const KL=buildKlocal(Emod, A, Ix, L, rel);
+      const KGe=MM(Tt, MM(KL, Tm));
+
+      const P=[...Emap[ni], ...Emap[nj]];
+      for (let r=0;r<6;r++) for (let cc=0;cc<6;cc++)
+        if (P[r]&&P[cc]) KG[P[r]-1][P[cc]-1]+=KGe[r][cc];
+
+      const ml=mlds.find(m=>m[0]===el[0]);
+      const fm_loc=ml ? buildFEM(ml[1],ml[2],ml[3],L,rel) : Array(6).fill(0);
+      const fm_glob=MV(Tt, fm_loc);
+
+      // element direction cosines for display
+      const cosE=dX/L, sinE=dY/L;
+      ED.push({KL,Tm,Tt,P,L,c,s,ang,cosE,sinE,fm_loc,fm_glob,KGe,rel,ni,nj,xs,ys,xe,ye,ml,Emod,Ix,elemId:el[0]});
+    }
+
+    // Zero-stiffness DOF detection (internal hinges)
+    for (let eq=0; eq<NEq; eq++) {
+      if (Math.abs(KG[eq][eq]) < 1e-10) {
+        const maxD=Math.max(...KG.map((r,ri)=>ri===eq?0:Math.abs(r[ri])));
+        KG[eq].fill(0); for(let r=0;r<NEq;r++) KG[r][eq]=0;
+        KG[eq][eq]=(maxD||1)*1e6;
+      }
+    }
+
+    // Load vector
+    const F=Array(NEq).fill(0);
+    for (const ld of nlds) {
+      const ni=ld[0]-1; if(ni<0||ni>=N) continue;
+      for (let d=0;d<3;d++) { const eq=Emap[ni][d]; if(eq) F[eq-1]+=ld[d+1]; }
+    }
+    for (const ed of ED) {
+      for (let j=0;j<6;j++) if(ed.P[j]) F[ed.P[j]-1]-=ed.fm_glob[j];
+    }
+
+    // Solve
+    const D=solveGE(KG, F);
+    const tol=Math.max(...D.map(Math.abs))*1e-10||0;
+    D.forEach((v,i)=>{ if(Math.abs(v)<tol) D[i]=0; });
+
+    // Nodal displacements
+    const ND=nodes.map((_,i)=>Emap[i].map(eq=>eq?D[eq-1]:0));
+
+    // Element results
+    const ER=ED.map(ed=>{
+      const dg=ed.P.map(eq=>eq?D[eq-1]:0);
+      const dl=MV(ed.Tm, dg);
+      const fl=VA(MV(ed.KL, dl), ed.fm_loc);
+      const t2=Math.max(...fl.map(Math.abs))*1e-10||0;
+      fl.forEach((v,i)=>{ if(Math.abs(v)<t2) fl[i]=0; });
+      return {dl, dg, fl};
+    });
+
+    // Reactions via full K_full * D_full - F_equiv_full
+    // Build full 3N x 3N stiffness
+    const KF=Z(3*N,3*N);
+    for (let i=0;i<NE;i++) {
+      const ed=ED[i];
+      const Pf=[3*ed.ni,3*ed.ni+1,3*ed.ni+2, 3*ed.nj,3*ed.nj+1,3*ed.nj+2];
+      for(let r=0;r<6;r++) for(let cc=0;cc<6;cc++) KF[Pf[r]][Pf[cc]]+=ed.KGe[r][cc];
+    }
+    const DF=Array(3*N).fill(0);
+    nodes.forEach((_,i)=>{ Emap[i].forEach((eq,d)=>{ if(eq) DF[3*i+d]=D[eq-1]; }); });
+    const FI=MV(KF, DF);
+    const FE=Array(3*N).fill(0);
+    for(const ld of nlds){const ni=ld[0]-1;if(ni<0||ni>=N)continue;FE[3*ni]+=ld[1];FE[3*ni+1]+=ld[2];FE[3*ni+2]+=ld[3];}
+    for(let i=0;i<NE;i++){const ed=ED[i];const Pf=[3*ed.ni,3*ed.ni+1,3*ed.ni+2,3*ed.nj,3*ed.nj+1,3*ed.nj+2];for(let j=0;j<6;j++) FE[Pf[j]]-=ed.fm_glob[j];}
+    const Rxns=FI.map((v,i)=>v-FE[i]);
+    // Clean tolerance
+    const rt=Math.max(...Rxns.map(Math.abs))*1e-10||0;
+    Rxns.forEach((v,i)=>{ if(Math.abs(v)<rt) Rxns[i]=0; });
+
+    // Build reaction table for supported nodes
+    const RXNtbl=[];
+    for(const s of sups){const ni=s[0]-1;if(ni<0||ni>=N)continue;
+      // Rx: raw; Ry: negated for display (Y-down → Y-up); Mz: raw
+      RXNtbl.push({node:s[0],
+        Rx: Emap[ni][0]===0 ? Rxns[3*ni]   : null,
+        Ry: Emap[ni][1]===0 ? -Rxns[3*ni+1]: null,
+        Mz: Emap[ni][2]===0 ? Rxns[3*ni+2] : null,
+      });
+    }
+
+    ST.res={ND,ER,ED,Rxns,RXNtbl,Emap,NEq,D};
+
+    renderResTbls();
+    document.getElementById('rsp').classList.add('on');
+    setView('deformed');
+
+    const mx=Math.max(...ND.flat().map(Math.abs));
+    setst(`Analysis complete · ${N} nodes · ${NE} elements · ${NEq} free DOFs · max|Δ| = ${mx.toExponential(3)} m`);
+  } catch(e) {
+    setst('Error: '+e.message); console.error(e);
+  }
+}
+
+function renderResTbls() {
+  const {ND,ER,RXNtbl}=ST.res;
+  const db=document.getElementById('rb-disp'); db.innerHTML='';
+  ND.forEach((d,i)=>{const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${i+1}</td><td>${d[0].toExponential(4)}</td><td>${d[1].toExponential(4)}</td><td>${d[2].toExponential(4)}</td>`;
+    db.appendChild(tr);});
+  const fb=document.getElementById('rb-frc'); fb.innerHTML='';
+  ER.forEach((er,i)=>{const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${i+1}</td>${er.fl.map(v=>`<td>${v.toFixed(3)}</td>`).join('')}`;
+    fb.appendChild(tr);});
+  const rb=document.getElementById('rb-rxn'); rb.innerHTML='';
+  RXNtbl.forEach(r=>{const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${r.node}</td><td>${r.Rx!=null?r.Rx.toFixed(3):'—'}</td><td>${r.Ry!=null?r.Ry.toFixed(3):'—'}</td><td>${r.Mz!=null?r.Mz.toFixed(3):'—'}</td>`;
+    rb.appendChild(tr);});
+}
+
+// ============================================================
+// CANVAS RENDERING
+// ============================================================
+const cv=document.getElementById('cv');
+const ctx=cv.getContext('2d');
+
+function getTF() {
+  const {nodes}=ST;
+  if (!nodes.length) return null;
+  const wxs=nodes.map(n=>n[1]), wys=nodes.map(n=>n[2]);
+  let x0=Math.min(...wxs), x1=Math.max(...wxs);
+  let y0=Math.min(...wys), y1=Math.max(...wys);
+  const rx=x1-x0||1, ry=y1-y0||1, mR=Math.max(rx,ry);
+  const pad=72, W=cv.width-2*pad, H=cv.height-2*pad;
+  const sc=Math.min(W/(rx+mR*0.5), H/(ry+mR*0.5));
+  const cx=(x0+x1)/2, cy=(y0+y1)/2;
+  // p: world → canvas (Y-up display, so positive Y is up on screen)
+  return {
+    p:(wx,wy)=>({x: cv.width/2+(wx-cx)*sc, y: cv.height/2-(wy-cy)*sc}),
+    sc, mR, cx, cy
+  };
+}
+
+// Convert MATLAB perp offset to canvas delta
+// MATLAB: x_off += val*cos(perp), y_off += val*sin(perp)
+// where perp = elem_angle + pi/2, cos(perp)=-sinE, sin(perp)=cosE  (sinE=dY/L, cosE=dX/L)
+// Canvas Y is flipped: canvas_dy = -world_dy * sc
+function perpDelta(val, diagSc, cosE, sinE, pxSc) {
+  return {
+    dx:  val * diagSc * (-sinE) * pxSc,   // same sign as world x
+    dy: -val * diagSc * cosE   * pxSc     // Y-flipped
+  };
+}
+
+function draw() {
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.fillStyle='#0C1524'; ctx.fillRect(0,0,cv.width,cv.height);
+  drawGrid();
+  const v=ST.view;
+  if      (v==='preview')   drawPreview();
+  else if (v==='deformed')  drawDeformed();
+  else if (v==='reactions') drawReactions();
+  else drawDiagram(v);
+  // Label
+  const lbl={preview:'STRUCTURE PREVIEW — Geometry, Supports & Loads',
+    deformed:'DEFORMED SHAPE',reactions:'REACTION FORCES',
+    axial:'AXIAL FORCE DIAGRAM (N)',shear:'SHEAR FORCE DIAGRAM (V)',
+    moment:'BENDING MOMENT DIAGRAM (M)'};
+  ctx.fillStyle='rgba(30,136,229,0.8)';
+  ctx.font='bold 11px "Barlow Condensed",sans-serif';
+  ctx.fillText(lbl[v]||'', 12, 20);
+}
+
+function drawGrid() {
+  ctx.strokeStyle='rgba(18,40,70,0.9)'; ctx.lineWidth=1;
+  for(let x=0;x<cv.width;x+=55){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,cv.height);ctx.stroke();}
+  for(let y=0;y<cv.height;y+=55){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(cv.width,y);ctx.stroke();}
+}
+
+function drawElements(tf, color='#3A6ACC', lw=2.5, dash=[]) {
+  const {nodes,elems}=ST; const {p}=tf;
+  ctx.strokeStyle=color; ctx.lineWidth=lw; ctx.setLineDash(dash);
+  for(const el of elems){
+    const n1=nodes[el[1]-1], n2=nodes[el[2]-1]; if(!n1||!n2) continue;
+    const p1=p(n1[1],n1[2]), p2=p(n2[1],n2[2]);
+    ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke();
+    // Element label at midpoint
+    if (dash.length===0) {
+      const mx=(p1.x+p2.x)/2, my=(p1.y+p2.y)/2;
+      ctx.fillStyle='#3A6ACC'; ctx.font='bold 10px "Barlow Condensed",sans-serif';
+      ctx.fillText(`E${el[0]}`,mx+4,my-4);
+    }
+    // Hinge symbols
+    const rel=el[4];
+    if(rel===1||rel===3) drawHinge(ctx,p2.x,p2.y);
+    if(rel===2||rel===3) drawHinge(ctx,p1.x,p1.y);
+  }
+  ctx.setLineDash([]);
+}
+
+function drawNodes(tf) {
+  const {nodes}=ST; const {p}=tf;
+  for(const n of nodes){
+    const pt=p(n[1],n[2]);
+    ctx.fillStyle='#FF5252'; ctx.beginPath(); ctx.arc(pt.x,pt.y,5,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#FF7070'; ctx.font='bold 11px "Barlow Condensed",sans-serif';
+    ctx.fillText(`N${n[0]}`,pt.x+8,pt.y-5);
+  }
+}
+
+function drawHinge(ctx, x, y) {
+  ctx.strokeStyle='#FFD740'; ctx.fillStyle='#0C1524'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fill(); ctx.stroke();
+}
+
+function drawArrow(x1,y1,x2,y2,color,lw=2){
+  const dx=x2-x1,dy=y2-y1,len=Math.sqrt(dx*dx+dy*dy); if(len<2) return;
+  const ang=Math.atan2(dy,dx), hs=9;
+  ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=lw;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hs*Math.cos(ang-.38),y2-hs*Math.sin(ang-.38));
+  ctx.lineTo(x2-hs*Math.cos(ang+.38),y2-hs*Math.sin(ang+.38));
+  ctx.closePath(); ctx.fill();
+}
+
+function drawMoment(x,y,r,cw,color){
+  ctx.strokeStyle=color; ctx.lineWidth=2;
+  ctx.beginPath();
+  if(cw) ctx.arc(x,y,r,Math.PI*.9,Math.PI*.1); // CW arc
+  else   ctx.arc(x,y,r,Math.PI*.1,Math.PI*.9,true);
+  ctx.stroke();
+  // Arrowhead
+  const ang=cw?Math.PI*.1:Math.PI*.9;
+  const tx=x+r*Math.cos(ang), ty=y+r*Math.sin(ang);
+  const da=cw?.3:-.3;
+  ctx.fillStyle=color; ctx.beginPath();
+  ctx.moveTo(tx,ty);
+  ctx.lineTo(tx-8*Math.cos(ang+da),ty-8*Math.sin(ang+da));
+  ctx.lineTo(tx-8*Math.cos(ang-da),ty-8*Math.sin(ang-da));
+  ctx.closePath(); ctx.fill();
+}
+
+function drawSupport(x,y,dx,dy,rz,s){
+  if(dx&&dy&&rz){
+    // Fixed: filled square
+    ctx.fillStyle='rgba(0,200,100,0.35)'; ctx.strokeStyle='#00C864'; ctx.lineWidth=1.5;
+    ctx.fillRect(x-s,y-s,2*s,2*s); ctx.strokeRect(x-s,y-s,2*s,2*s);
+  } else if(dx&&dy&&!rz){
+    // Pin: triangle
+    ctx.fillStyle='rgba(0,200,100,0.45)'; ctx.strokeStyle='#00C864'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x-s,y+s*1.6); ctx.lineTo(x+s,y+s*1.6);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle='#00C864'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x-s*1.2,y+s*1.7); ctx.lineTo(x+s*1.2,y+s*1.7); ctx.stroke();
+  } else if(!dx&&dy&&!rz){
+    // Roller vertical
+    ctx.fillStyle='rgba(80,160,255,0.4)'; ctx.strokeStyle='#4080FF'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x-s,y+s*1.6); ctx.lineTo(x+s,y+s*1.6);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x,y+s*1.9,s*.28,0,Math.PI*2); ctx.stroke();
+  } else if(dx&&!dy&&!rz){
+    // Roller horizontal
+    ctx.fillStyle='rgba(0,200,200,0.4)'; ctx.strokeStyle='#00C8C8'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+s*1.6,y-s); ctx.lineTo(x+s*1.6,y+s);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x+s*1.9,y,s*.28,0,Math.PI*2); ctx.stroke();
+  }
+}
+
+function drawSupports(tf){
+  const {sups,nodes}=ST; const {p,sc,mR}=tf;
+  const s=mR*sc*.04;
+  for(const sup of sups){const n=nodes[sup[0]-1]; if(!n) continue;
+    const pt=p(n[1],n[2]);
+    drawSupport(pt.x,pt.y,sup[1],sup[2],sup[3],s);
+  }
+}
+
+function drawNodalLoads(tf){
+  const {nlds,nodes}=ST; const {p,sc,mR}=tf;
+  const al=mR*sc*.14, to=mR*sc*.03;
+  for(const ld of nlds){
+    const n=nodes[ld[0]-1]; if(!n) continue;
+    const pt=p(n[1],n[2]);
+    const [,Fx,Fy,Mz]=ld;
+    // Fx: horizontal arrow pointing toward node
+    if(Math.abs(Fx)>1e-6){
+      const dir=Math.sign(Fx);
+      drawArrow(pt.x-dir*al,pt.y,pt.x,pt.y,'#FF80FF',2);
+      ctx.fillStyle='#FF80FF'; ctx.font='10px Barlow,sans-serif';
+      ctx.fillText(`Fx=${Fx}kN`,pt.x+dir*(al*.6+to),pt.y-5);
+    }
+    // Fy: vertical arrow (positive = downward in Y-down convention → arrow points down in canvas)
+    if(Math.abs(Fy)>1e-6){
+      const dir=Math.sign(Fy); // positive=downward→canvas y increases (down on screen)
+      drawArrow(pt.x,pt.y-dir*al,pt.x,pt.y,'#FF80FF',2);
+      ctx.fillStyle='#FF80FF'; ctx.font='10px Barlow,sans-serif';
+      ctx.fillText(`Fy=${Fy}kN`,pt.x+6,pt.y+dir*(al*.6+to));
+    }
+    // Mz: moment arc (CW positive in MATLAB convention)
+    if(Math.abs(Mz)>1e-6){
+      drawMoment(pt.x,pt.y,mR*sc*.07,Mz>0,'#FF80FF');
+      ctx.fillStyle='#FF80FF'; ctx.font='10px Barlow,sans-serif';
+      ctx.fillText(`M=${Mz}kN·m`,pt.x+mR*sc*.09,pt.y-mR*sc*.04);
+    }
+  }
+}
+
+function drawMemberLoads(tf){
+  const {mlds,elems,nodes}=ST; const {p,sc,mR}=tf;
+  const al=mR*sc*.1;
+  for(const ml of mlds){
+    const el=elems.find(e=>e[0]===ml[0]); if(!el) continue;
+    const n1=nodes[el[1]-1], n2=nodes[el[2]-1]; if(!n1||!n2) continue;
+    const p1=p(n1[1],n1[2]), p2=p(n2[1],n2[2]);
+    const dx=p2.x-p1.x, dy=p2.y-p1.y;
+    const Lpx=Math.sqrt(dx*dx+dy*dy); if(Lpx<2) continue;
+    const Lw=Math.sqrt((n2[1]-n1[1])**2+(n2[2]-n1[2])**2);
+    const [,type,mag,ap]=ml;
+    // perpendicular direction (90° CCW from element direction in canvas)
+    const px2=-dy/Lpx, py2=dx/Lpx; // perp unit vector in canvas
+    // Note: mag>0 is downward in MATLAB convention → perp direction in canvas
+    const sign=mag>0?1:-1;
+
+    if(type===1){
+      // Point force at ap from start
+      const t=ap/Lw, lx=p1.x+t*dx, ly=p1.y+t*dy;
+      drawArrow(lx+sign*px2*al,ly+sign*py2*al,lx,ly,'#FF5050',2);
+      ctx.fillStyle='#FF5050'; ctx.font='10px Barlow,sans-serif';
+      ctx.fillText(`P=${mag}`,lx+sign*px2*al*1.5,ly+sign*py2*al*1.5);
+    } else if(type===2){
+      // Concentrated moment at ap
+      const t=ap/Lw, lx=p1.x+t*dx, ly=p1.y+t*dy;
+      drawMoment(lx,ly,al*.55,mag>0,'#FF5050');
+      ctx.fillStyle='#FF5050'; ctx.font='10px Barlow,sans-serif';
+      ctx.fillText(`M=${mag}`,lx+px2*al,ly+py2*al);
+    } else if(type===3){
+      // UDL over loaded length
+      const loadL=ap===0?Lw:ap, ratioEnd=loadL/Lw;
+      const ex=p1.x+ratioEnd*dx, ey=p1.y+ratioEnd*dy;
+      const nArrows=Math.max(3,Math.round(loadL/Lw*6));
+      for(let k=0;k<=nArrows;k++){
+        const t2=k/nArrows*ratioEnd;
+        const lx=p1.x+t2*dx, ly=p1.y+t2*dy;
+        drawArrow(lx+sign*px2*al,ly+sign*py2*al,lx,ly,'#FF5050',1.5);
+      }
+      ctx.strokeStyle='#FF5050'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(p1.x+sign*px2*al,p1.y+sign*py2*al);
+      ctx.lineTo(ex+sign*px2*al,ey+sign*py2*al); ctx.stroke();
+      const mx=(p1.x+ex)/2, my=(p1.y+ey)/2;
+      ctx.fillStyle='#FF5050'; ctx.font='bold 10px Barlow,sans-serif';
+      ctx.fillText(`q=${mag}kN/m`,mx+sign*px2*al*1.6,my+sign*py2*al*1.6);
+    }
+  }
+}
+
+function drawPreview(){
+  const tf=getTF(); if(!tf) return;
+  drawElements(tf);
+  drawMemberLoads(tf);
+  drawNodalLoads(tf);
+  drawSupports(tf);
+  drawNodes(tf);
+}
+
+function drawDeformed(){
+  if(!ST.res){ drawPreview(); return; }
+  const {nodes,elems,sups}=ST;
+  const {ND,ER,ED}=ST.res;
+  const tf=getTF(); if(!tf) return;
+  const {p,sc,mR}=tf;
+  const sf=parseFloat(document.getElementById('scl').value)||1;
+
+  // Deformation display scale: ScaleFactor * maxRange * 0.15 / maxDisp
+  const maxDisp=Math.max(...ND.flat().map(Math.abs),1e-10);
+  const defSc=sf*mR*0.15/maxDisp;
+
+  // Original (dashed)
+  drawElements(tf,'rgba(60,100,180,0.35)',1,[4,4]);
+
+  // Deformed shape per element (Hermite interpolation)
+  ctx.strokeStyle='#FFD740'; ctx.lineWidth=2.5;
+  for(let i=0;i<elems.length;i++){
+    const ed=ED[i], er=ER[i];
+    const {xs,ys,xe,ye,L,cosE,sinE,rel,ml,Emod,Ix}=ed;
+    const dl=er.dl; // local displacements [u1,v1,th1,u2,v2,th2]
+    const u1=dl[0], u2=dl[3], th1=dl[2], th2=dl[5];
+    // MATLAB convention: v1n = -dl[1], v2n = -dl[4]
+    const v1n=-dl[1], v2n=-dl[4];
+
+    const nPts=50;
+    ctx.beginPath();
+    for(let k=0;k<=nPts;k++){
+      const xi=k/nPts, xL=xi*L;
+      const H1=1-3*xi**2+2*xi**3;
+      const H2=xL*(1-2*xi+xi**2);
+      const H3=3*xi**2-2*xi**3;
+      const H4=xL*(xi**2-xi);
+      const v_neg=H1*v1n+H2*th1+H3*v2n+H4*th2;
+      const u=u1*(1-xi)+u2*xi;
+
+      // Particular solution for UDL on fixed-fixed (rel=0, type=3)
+      let v_part=0;
+      if(ml&&ml[1]===3&&rel===0){
+        const q=-ml[2]; // negate (MATLAB uses -Magnitude)
+        v_part=(q*xL**2*(L-xL)**2)/(24*Emod*Ix);
+      } else if(ml&&ml[1]===1&&rel===0){
+        const Fz=-ml[2], a=ml[3], b=L-a;
+        if(a>0&&a<L){
+          if(xL<=a) v_part=(Fz*b**2*xL**2)/(6*Emod*Ix*L**3)*(3*a*L-3*a*xL-b*xL);
+          else       v_part=(Fz*a**2*(L-xL)**2)/(6*Emod*Ix*L**3)*(3*b*L-3*b*(L-xL)-a*(L-xL));
+        }
+      }
+      const vt=v_neg+v_part;
+
+      // MATLAB formulas: X_def = xs + xL*cosE + defSc*(u*cosE - vt*sinE)
+      //                  Y_def = ys + xL*sinE + defSc*(u*sinE + vt*cosE)
+      const wx=xs+xL*cosE+defSc*(u*cosE-vt*sinE);
+      const wy=ys+xL*sinE+defSc*(u*sinE+vt*cosE);
+      const pt=p(wx,wy);
+      if(k===0) ctx.moveTo(pt.x,pt.y); else ctx.lineTo(pt.x,pt.y);
+    }
+    ctx.stroke();
+  }
+
+  // Deformed node dots
+  nodes.forEach((n,i)=>{
+    const d=ND[i];
+    // Y_def for node: ys - ND[1]*defSc  (MATLAB convention: Y_def = ys - Dy*ScaleFactor)
+    const wx=n[1]+d[0]*defSc, wy=n[2]-d[1]*defSc;
+    const pt=p(wx,wy);
+    ctx.fillStyle='#FFD740'; ctx.beginPath(); ctx.arc(pt.x,pt.y,4,0,Math.PI*2); ctx.fill();
+  });
+
+  drawSupports(tf);
+
+  // Legend
+  ctx.strokeStyle='rgba(60,100,180,0.5)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.moveTo(14,40); ctx.lineTo(44,40); ctx.stroke();
+  ctx.setLineDash([]); ctx.strokeStyle='#FFD740'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(14,52); ctx.lineTo(44,52); ctx.stroke();
+  ctx.fillStyle='#6080A0'; ctx.font='11px Barlow,sans-serif';
+  ctx.fillText('Original',47,44); ctx.fillText('Deformed',47,56);
+  ctx.fillStyle='#3A5070'; ctx.font='10px Barlow,sans-serif';
+  ctx.fillText(`Visual scale ×${sf} · disp scale = ${defSc.toExponential(2)} m/m`,14,cv.height-10);
+}
+
+function drawReactions(){
+  if(!ST.res){ drawPreview(); return; }
+  const {nodes,elems,sups}=ST;
+  const {RXNtbl,Rxns,Emap}=ST.res;
+  const tf=getTF(); if(!tf) return;
+  const {p,sc,mR}=tf;
+
+  // Draw structure
+  drawElements(tf,'rgba(80,120,200,0.45)',1.5,[]);
+  drawSupports(tf);
+  nodes.forEach(n=>{const pt=p(n[1],n[2]);ctx.fillStyle='#A0B8E0';ctx.beginPath();ctx.arc(pt.x,pt.y,4,0,Math.PI*2);ctx.fill();});
+
+  const al=mR*sc*.18;
+
+  // Find max reaction for scaling
+  const maxR=Math.max(...RXNtbl.flatMap(r=>[Math.abs(r.Rx||0),Math.abs(r.Ry||0)]),1e-10);
+  const rsc=al/maxR;
+
+  for(const r of RXNtbl){
+    const n=nodes[r.node-1]; if(!n) continue;
+    const pt=p(n[1],n[2]);
+
+    if(r.Rx!=null&&Math.abs(r.Rx)>1e-5){
+      // Rx: horizontal reaction (positive = rightward)
+      const dir=Math.sign(r.Rx);
+      drawArrow(pt.x-dir*Math.abs(r.Rx)*rsc,pt.y,pt.x,pt.y,'#00D080',2);
+      ctx.fillStyle='#00D080'; ctx.font='bold 10px "JetBrains Mono",monospace';
+      ctx.fillText(`${r.Rx.toFixed(2)}`,pt.x+dir*6,pt.y-5);
+    }
+    if(r.Ry!=null&&Math.abs(r.Ry)>1e-5){
+      // Ry display: positive=downward (Y-down) so arrow points down in canvas for positive value
+      const dir=Math.sign(r.Ry);
+      drawArrow(pt.x,pt.y-dir*Math.abs(r.Ry)*rsc,pt.x,pt.y,'#00D080',2);
+      ctx.fillStyle='#00D080'; ctx.font='bold 10px "JetBrains Mono",monospace';
+      ctx.fillText(`${r.Ry.toFixed(2)}`,pt.x+6,pt.y+dir*10);
+    }
+    if(r.Mz!=null&&Math.abs(r.Mz)>1e-5){
+      drawMoment(pt.x,pt.y,mR*sc*.08,r.Mz>0,'#00D080');
+      ctx.fillStyle='#00D080'; ctx.font='bold 10px "JetBrains Mono",monospace';
+      ctx.fillText(`${r.Mz.toFixed(2)}`,pt.x+mR*sc*.1,pt.y-8);
+    }
+  }
+  ctx.fillStyle='#00D080'; ctx.font='11px Barlow,sans-serif';
+  ctx.fillText('Reactions [kN, kN·m] — arrows show direction of reaction on structure',14,cv.height-10);
+}
+
+function drawDiagram(type){
+  if(!ST.res){ drawPreview(); return; }
+  const {nodes,elems,mlds,sups}=ST;
+  const {ER,ED}=ST.res;
+  const tf=getTF(); if(!tf) return;
+  const {p,sc,mR}=tf;
+
+  drawElements(tf,'rgba(80,120,200,0.35)',1.2,[]);
+  drawSupports(tf);
+
+  // Max value for scaling
+  let maxV=0;
+  const getVals=(er,type)=>{
+    if(type==='axial') return [er.fl[0],-er.fl[3]];
+    if(type==='shear') return [er.fl[1],-er.fl[4]];
+    return [er.fl[2],-er.fl[5]];
+  };
+  for(const er of ER) maxV=Math.max(maxV,...getVals(er,type).map(Math.abs));
+  if(maxV<1e-8){
+    ctx.fillStyle='#8090A0'; ctx.font='14px Barlow,sans-serif';
+    ctx.fillText('All values are zero.',20,60); return;
+  }
+
+  const diagSc=mR*sc*0.18/maxV;
+  const colors={axial:'#4080FF',shear:'#FF4040',moment:'#40C850'};
+  const col=colors[type];
+
+  for(let i=0;i<elems.length;i++){
+    const el=elems[i], ed=ED[i], er=ER[i];
+    const {xs,ys,xe,ye,L,cosE,sinE,ml}=ed;
+    const nPts=60;
+    const pBase=[], pTop=[];
+
+    for(let k=0;k<=nPts;k++){
+      const xi=k/nPts, xL=xi*L;
+      const pt0=p(xs+xL*cosE, ys+xL*sinE);
+      pBase.push([pt0.x,pt0.y]);
+
+      let val=0;
+      if(type==='axial'){
+        val=er.fl[0]*(1-xi)+(-er.fl[3])*xi; // linear interpolation axial
+      } else if(type==='shear'){
+        // shear varies with member loads
+        val=er.fl[1]; // Fy at i-end (local)
+        if(ml){
+          if(ml[1]===3){ const q=ml[2],av=ml[3]===0?L:ml[3]; if(xL<=av) val=er.fl[1]+q*xL; else val=er.fl[1]+q*av; }
+          else if(ml[1]===1){ const a=ml[3]; if(xL>a) val=er.fl[1]+ml[2]; }
+        }
+        // MATLAB: offset = -Fy_local * scale * perp
+        val=-val; // per MATLAB sign: -Fy_local * perp
+      } else {
+        // moment: M(x) = Mz_start + Fy_start * x + ...
+        val=er.fl[2]+er.fl[1]*xL;
+        if(ml){
+          if(ml[1]===3){ const q=ml[2],av=ml[3]===0?L:ml[3]; val+=xL<=av?0.5*q*xL**2:0.5*q*av**2+(q*av)*(xL-av); }
+          else if(ml[1]===1){ const Fz=ml[2],a=ml[3]; if(xL>a) val+=(er.fl[1]+Fz)*(xL-a); }
+          else if(ml[1]===2){ const Mm=ml[2],a=ml[3]; if(xL>a) val+=Mm; }
+        }
+        // MATLAB: offset = +Mz * scale * perp
+      }
+
+      // Compute canvas offset using perpDelta
+      const {dx,dy}=perpDelta(val,diagSc,cosE,sinE,1);
+      pTop.push([pt0.x+dx, pt0.y+dy]);
+    }
+
+    // Draw filled band
+    ctx.beginPath();
+    ctx.moveTo(pBase[0][0],pBase[0][1]);
+    for(const [x,y] of pTop) ctx.lineTo(x,y);
+    for(let k=pBase.length-1;k>=0;k--) ctx.lineTo(pBase[k][0],pBase[k][1]);
+    ctx.closePath();
+    ctx.fillStyle=col+'33'; ctx.fill();
+
+    ctx.beginPath(); ctx.moveTo(pTop[0][0],pTop[0][1]);
+    for(const [x,y] of pTop.slice(1)) ctx.lineTo(x,y);
+    ctx.strokeStyle=col; ctx.lineWidth=2; ctx.stroke();
+
+    // Dashed baseline connectors
+    ctx.strokeStyle=col+'80'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(pBase[0][0],pBase[0][1]); ctx.lineTo(pTop[0][0],pTop[0][1]); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pBase[nPts][0],pBase[nPts][1]); ctx.lineTo(pTop[nPts][0],pTop[nPts][1]); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Value labels
+    ctx.fillStyle=col; ctx.font='bold 9.5px "JetBrains Mono",monospace';
+    const fl=er.fl;
+    const v0=type==='axial'?fl[0]:type==='shear'?fl[1]:fl[2];
+    const vn=type==='axial'?-fl[3]:type==='shear'?-fl[4]:-fl[5];
+    // Display negated for conventional M sign (MATLAB shows -Mz_start at node)
+    const disp=(v)=>(type==='moment'?-v:v).toFixed(2);
+    ctx.fillText(disp(v0), pTop[0][0]+2, pTop[0][1]-3);
+    ctx.fillText(disp(vn), pTop[nPts][0]+2, pTop[nPts][1]-3);
+
+    // Max value label (if interior max)
+    let mxi=0, mxv=0;
+    for(let k=1;k<pTop.length-1;k++){
+      const pval=Math.hypot(pTop[k][0]-pBase[k][0],pTop[k][1]-pBase[k][1]);
+      if(pval>mxv){mxv=pval;mxi=k;}
+    }
+    if(mxi>2&&mxi<nPts-2){
+      ctx.fillText('peak',pTop[mxi][0]+2,pTop[mxi][1]-3);
+    }
+  }
+
+  const unit={axial:'[kN]',shear:'[kN]',moment:'[kN·m]'};
+  ctx.fillStyle=col; ctx.font='11px Barlow,sans-serif';
+  ctx.fillText(`Max: ${maxV.toFixed(3)} ${unit[type]}`,14,cv.height-10);
+}
+
+// ============================================================
+// CANVAS RESIZE
+// ============================================================
+function resizeCanvas(){
+  const wrap=document.getElementById('canvwrap')||cv.parentElement;
+  cv.width=wrap.clientWidth; cv.height=wrap.clientHeight;
+  draw();
+}
+new ResizeObserver(resizeCanvas).observe(cv.parentElement);
+
+// ============================================================
+// UI ACTIONS
+// ============================================================
+function setst(msg){ document.getElementById('stmsg').textContent=msg; }
+function setView(v){
+  document.querySelectorAll('.vbtn').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  ST.view=v; draw();
+}
+function doUpdatePlot(){ setView('preview'); setst('Preview updated.'); }
+function doClear(){ ST.res=null; document.getElementById('rsp').classList.remove('on'); setView('preview'); setst('Preview cleared.'); }
+function doReset(){ ST.res=null; document.getElementById('rsp').classList.remove('on'); setView('preview'); setst('View reset.'); }
+
+function doSave(){
+  const d={nodes:ST.nodes,elems:ST.elems,mats:ST.mats,sups:ST.sups,nlds:ST.nlds,mlds:ST.mlds};
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));
+  a.download='FrameAnalysisGUI_project.json'; a.click();
+  setst('Project saved as FrameAnalysisGUI_project.json');
+}
+function doCite(){
+  const citation = `Yurdakul, Özgür (2026). FrameAnalysisGUI: A web-based 2D frame analysis tool based on the Direct Stiffness Method. Faculty of Transport Engineering, University of Pardubice. Available at: https://ozguryurdakul.github.io/educationaltools/FrameAnalysisGUI_v1_1.html`;
+  navigator.clipboard.writeText(citation).then(()=>{
+    setst('Citation copied to clipboard.');
+  }).catch(()=>{
+    prompt('Copy citation:', citation);
+  });
+}
+function doLoad(){
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.json';
+  inp.onchange=e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{
+        const d=JSON.parse(ev.target.result);
+        ST.nodes=d.nodes||[]; ST.elems=d.elems||[]; ST.mats=d.mats||[];
+        ST.sups=d.sups||[]; ST.nlds=d.nlds||[]; ST.mlds=d.mlds||[];
+        ST.res=null; document.getElementById('rsp').classList.remove('on');
+        initTbls(); setView('preview');
+        setst('Project loaded: '+f.name);
+      }catch(err){setst('Load error: '+err.message);}
+    };
+    r.readAsText(f);
+  };
+  inp.click();
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init(){
+  initTbls();
+  setTimeout(resizeCanvas, 100);
+}
+init();
+</script>
+</body>
+</html>
