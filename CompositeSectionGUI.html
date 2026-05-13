@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CompositeSectionGUI</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#0D1B2A; --panel:#10192A; --panel2:#172234;
+  --blue:#1E88E5; --blue2:#1565C0;
+  --green:#43A047; --orange:#F57C00; --red:#E53935; --purple:#8E24AA;
+  --surf:#FFFFFF; --surf2:#F0F4FB; --bdr:#C4D0E4; --bdr2:#1E3050;
+  --txt:#1A2436; --muted:#788CA0;
+  --mono:'JetBrains Mono',monospace; --sans:'Barlow',sans-serif; --cond:'Barlow Condensed',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{font-family:var(--sans);background:var(--navy);color:var(--txt);display:flex;flex-direction:column;}
+
+/* Header */
+.hdr{background:linear-gradient(90deg,#091422,#0f2040);border-bottom:2px solid var(--blue2);
+  display:flex;align-items:center;padding:0 16px;height:46px;flex-shrink:0;gap:14px;}
+.hdr-logo{font-family:var(--cond);font-size:20px;font-weight:700;color:#fff;letter-spacing:.06em;}
+.hdr-logo em{color:var(--blue);font-style:normal;}
+.hdr-sub{font-family:var(--cond);font-size:11px;color:#C8DCF0;letter-spacing:.08em;
+  border-left:1px solid #2A4060;padding-left:14px;white-space:nowrap;}
+.hdr-auth{margin-left:auto;font-size:10.5px;color:#C8DCF0;text-align:right;line-height:1.55;}
+.cite-line{font-size:9.5px;color:#A8C4D8;font-style:italic;}
+.cite-line a{color:#7ABCDC;text-decoration:none;}
+
+/* Toolbar */
+.tb{background:#09131E;border-bottom:1px solid var(--bdr2);display:flex;align-items:center;
+  padding:5px 10px;gap:7px;flex-shrink:0;flex-wrap:wrap;}
+.btn{height:28px;padding:0 13px;border:none;border-radius:3px;font-family:var(--sans);
+  font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;
+  gap:5px;transition:filter .12s;white-space:nowrap;}
+.btn:hover{filter:brightness(1.12);} .btn:active{filter:brightness(.9);}
+.b-orange{background:var(--orange);color:#fff;}
+.b-blue{background:#1565C0;color:#fff;}
+.b-red{background:#B71C1C;color:#fff;}
+.b-gray{background:#37474F;color:#CFD8DC;}
+.b-navy{background:#1A237E;color:#fff;}
+.b-brown{background:#4E342E;color:#fff;}
+.vsep{width:1px;height:22px;background:var(--bdr2);margin:0 2px;}
+.st{margin-left:auto;font-size:11px;color:#7AACC8;font-style:italic;
+  max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* Main */
+.main{flex:1;display:flex;overflow:hidden;}
+
+/* Left panel */
+.left{width:480px;flex-shrink:0;background:var(--surf);border-right:1px solid var(--bdr);
+  display:flex;flex-direction:column;overflow:hidden;}
+
+/* Tab nav */
+.tnav{display:flex;background:var(--panel);border-bottom:2px solid var(--bdr2);flex-shrink:0;}
+.ttab{padding:7px 12px;font-family:var(--cond);font-size:11px;font-weight:700;
+  letter-spacing:.06em;color:#7AACC8;background:none;border:none;cursor:pointer;
+  white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;}
+.ttab.on{color:var(--blue);border-bottom-color:var(--blue);background:rgba(30,136,229,.08);}
+.ttab:hover:not(.on){color:#A0C0D8;}
+
+.tpnl{display:none;flex-direction:column;flex:1;overflow:auto;padding:10px 12px;gap:8px;}
+.tpnl.on{display:flex;}
+
+/* Form rows */
+.frow{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.flbl{font-size:12px;font-weight:600;color:var(--txt);white-space:nowrap;min-width:130px;}
+.flbl-sm{font-size:11px;color:var(--txt);white-space:nowrap;min-width:100px;}
+.finp{height:26px;border:1px solid var(--bdr);border-radius:3px;font-family:var(--mono);
+  font-size:12px;color:var(--txt);padding:0 6px;background:var(--surf2);outline:none;
+  -moz-appearance:textfield;}
+.finp::-webkit-inner-spin-button,.finp::-webkit-outer-spin-button{-webkit-appearance:none;}
+.finp:focus{border-color:var(--blue);background:#EBF5FF;}
+.fsel{height:26px;border:1px solid var(--bdr);border-radius:3px;font-family:var(--sans);
+  font-size:12px;color:var(--txt);padding:0 4px;background:var(--surf2);cursor:pointer;outline:none;}
+.fsel:focus{border-color:var(--blue);}
+.phnt{font-size:10.5px;color:#5070A0;line-height:1.5;background:#EEF4FF;
+  border-left:3px solid var(--blue);padding:4px 8px;border-radius:0 3px 3px 0;flex-shrink:0;}
+.dim-panel{background:var(--surf2);border:1px solid var(--bdr);border-radius:4px;
+  padding:8px 10px;display:flex;flex-direction:column;gap:6px;flex-shrink:0;}
+.dim-title{font-family:var(--cond);font-size:11px;font-weight:700;color:#3A5878;
+  letter-spacing:.06em;text-transform:uppercase;}
+.hidden{display:none!important;}
+
+/* Zone-2 section props panel */
+.zpanel{background:#EEF4FF;border:1px solid #BDD0F0;border-radius:4px;padding:8px 10px;
+  display:flex;flex-direction:column;gap:5px;flex-shrink:0;}
+.zpanel-title{font-family:var(--cond);font-size:10.5px;font-weight:700;color:#2A5070;
+  letter-spacing:.07em;margin-bottom:2px;}
+
+/* Schematic canvas */
+.schem-wrap{flex:1;min-height:180px;background:#F0F4FF;border:1px solid var(--bdr);
+  border-radius:4px;overflow:hidden;position:relative;}
+#cv-schem{width:100%;height:100%;}
+
+/* Shapes table */
+.tbl-section{display:flex;flex-direction:column;gap:4px;flex-shrink:0;padding:0 12px;
+  border-top:2px solid var(--bdr);padding-top:8px;}
+.tbl-title{font-family:var(--cond);font-size:12px;font-weight:700;color:#2A3A4A;
+  letter-spacing:.04em;}
+.tbl-wrap{overflow:auto;border:1px solid var(--bdr);border-radius:4px;max-height:185px;}
+table.stbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px;}
+table.stbl th{background:var(--panel2);color:#5878A8;font-family:var(--cond);font-size:9.5px;
+  font-weight:700;letter-spacing:.07em;padding:4px 5px;border:1px solid var(--bdr2);
+  text-align:center;position:sticky;top:0;z-index:1;white-space:nowrap;}
+table.stbl td{border:1px solid #E0E8F4;padding:0;}
+table.stbl td.ro{color:#6080A0;text-align:center;font-size:11px;padding:3px 5px;
+  background:var(--surf2);}
+table.stbl input[type=number],table.stbl input[type=text]{
+  width:100%;border:none;background:transparent;font-family:var(--mono);font-size:11px;
+  color:var(--txt);padding:3px 4px;text-align:center;outline:none;-moz-appearance:textfield;}
+table.stbl input::-webkit-inner-spin-button,table.stbl input::-webkit-outer-spin-button{-webkit-appearance:none;}
+table.stbl input:focus{background:#EBF5FF;}
+table.stbl select{width:100%;border:none;background:transparent;font-family:var(--mono);
+  font-size:11px;color:var(--txt);padding:2px;outline:none;cursor:pointer;}
+table.stbl tr:hover td:not(.ro){background:#F5F9FF;}
+
+/* Right panel */
+.right{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#0C1524;}
+.rp-results{background:#07101A;border-bottom:1px solid var(--bdr2);flex-shrink:0;
+  height:210px;overflow:auto;padding:8px 12px;}
+.rp-results pre{font-family:var(--mono);font-size:10.5px;color:#80C0A0;line-height:1.55;
+  white-space:pre;min-height:60px;}
+.rp-hint{font-family:var(--mono);font-size:10.5px;color:#3A6050;line-height:1.55;
+  font-style:italic;}
+.canvrow{flex:1;display:flex;overflow:hidden;gap:0;}
+.cv-wrap{flex:1;position:relative;overflow:hidden;border-right:1px solid var(--bdr2);}
+.cv-wrap:last-child{border-right:none;}
+.cv-wrap canvas{position:absolute;top:0;left:0;width:100%;height:100%;}
+.cv-lbl{position:absolute;top:8px;left:12px;font-family:var(--cond);font-size:11px;
+  font-weight:700;color:rgba(30,136,229,.8);letter-spacing:.08em;pointer-events:none;z-index:5;}
+.zoom-ctrl{position:absolute;bottom:10px;right:10px;display:flex;flex-direction:column;
+  gap:3px;z-index:20;}
+.zoom-ctrl button{width:28px;height:28px;background:rgba(10,25,45,.85);border:1px solid #2A4868;
+  border-radius:3px;color:#7AACC8;font-size:15px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;transition:all .12s;}
+.zoom-ctrl button:hover{background:rgba(30,80,140,.9);color:#fff;border-color:#4A80B8;}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-logo">Composite<em>SectionGUI</em></div>
+  <div class="hdr-sub">Cross-Section Analyzer &nbsp;·&nbsp; Centroid · Inertia · Mohr's Circle</div>
+  <div class="hdr-auth">
+    Özgür Yurdakul &nbsp;|&nbsp; Faculty of Transport Engineering, University of Pardubice<br>
+    v1.2 (May 2026) &nbsp;·&nbsp; Units: mm, mm², mm⁴, mm³ &nbsp;·&nbsp; CC BY-NC-SA 4.0<br>
+    <span class="cite-line">Yurdakul, Ö. (2026). <em>CompositeSectionGUI</em>: A web-based composite cross-section analyzer. Univ. of Pardubice.
+    Available at: <a href="https://ozguryurdakul.github.io/educationaltools/CompositeSectionGUI.html" target="_blank">ozguryurdakul.github.io/educationaltools</a></span>
+  </div>
+</div>
+
+<!-- TOOLBAR -->
+<div class="tb">
+  <button class="btn b-orange" onclick="doCalc()">▶ CALCULATE</button>
+  <button class="btn b-blue"   onclick="doExample()">📐 Example</button>
+  <button class="btn b-red"    onclick="doRemoveLast()">− Remove Last</button>
+  <button class="btn b-gray"   onclick="doClearAll()">✕ Clear All</button>
+  <div class="vsep"></div>
+  <button class="btn b-navy"   onclick="doSave()">💾 Save Project</button>
+  <button class="btn b-brown"  onclick="doLoad()">📂 Load Project</button>
+  <span class="st" id="stmsg">Add shapes from any tab — all contribute to the same composite section.</span>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT: INPUT -->
+  <div class="left">
+    <div class="tnav">
+      <button class="ttab on" data-tab="std">STANDARD SHAPE</button>
+      <button class="ttab"    data-tab="cust">CUSTOM (TABLE)</button>
+      <button class="ttab"    data-tab="steel">STEEL PROFILES</button>
+    </div>
+
+    <!-- TAB 1: Standard -->
+    <div class="tpnl on" id="tp-std">
+      <div class="frow">
+        <span class="flbl">Shape Type:</span>
+        <select class="fsel" id="dd-type" onchange="onTypeChanged()" style="flex:1">
+          <option value="rectangle">Rectangle</option>
+          <option value="circle">Circle</option>
+          <option value="semicircle">Semicircle</option>
+          <option value="triangle">Triangle</option>
+          <option value="hollow_rect">Hollow Rectangle</option>
+          <option value="hollow_circ">Hollow Circle</option>
+        </select>
+        <span class="flbl" style="min-width:40px">Sign:</span>
+        <select class="fsel" id="dd-sign">
+          <option value="1">+1 (add)</option>
+          <option value="-1">−1 (void)</option>
+        </select>
+      </div>
+      <div class="frow">
+        <span class="flbl">Label:</span>
+        <input type="text" class="finp" id="ef-label" value="Shape 1" style="flex:1">
+      </div>
+      <div class="frow">
+        <span class="flbl">x₀ centroid (mm):</span>
+        <input type="number" class="finp" id="ef-x0" value="0" step="any" style="width:90px">
+        <span class="flbl" style="min-width:80px">y₀ (mm):</span>
+        <input type="number" class="finp" id="ef-y0" value="0" step="any" style="width:90px">
+      </div>
+      <div class="dim-panel">
+        <div class="dim-title">Dimensions</div>
+        <div class="frow" id="row-b">
+          <span class="flbl-sm" id="lbl-b">Width b (mm):</span>
+          <input type="number" class="finp" id="ef-b" value="100" step="any" style="width:90px">
+        </div>
+        <div class="frow" id="row-h">
+          <span class="flbl-sm" id="lbl-h">Height h (mm):</span>
+          <input type="number" class="finp" id="ef-h" value="200" step="any" style="width:90px">
+        </div>
+        <div class="frow hidden" id="row-bi">
+          <span class="flbl-sm">Inner Width bi (mm):</span>
+          <input type="number" class="finp" id="ef-bi" value="80" step="any" style="width:90px">
+        </div>
+        <div class="frow hidden" id="row-hi">
+          <span class="flbl-sm">Inner Height hi (mm):</span>
+          <input type="number" class="finp" id="ef-hi" value="160" step="any" style="width:90px">
+        </div>
+        <div class="frow hidden" id="row-r">
+          <span class="flbl-sm" id="lbl-r">Radius r (mm):</span>
+          <input type="number" class="finp" id="ef-r" value="50" step="any" style="width:90px">
+        </div>
+        <div class="frow hidden" id="row-ri">
+          <span class="flbl-sm">Inner Radius ri (mm):</span>
+          <input type="number" class="finp" id="ef-ri" value="30" step="any" style="width:90px">
+        </div>
+        <div class="phnt" id="dim-note" style="margin-top:2px;">x₀ / y₀ = centroid of this shape in the global coordinate system.</div>
+      </div>
+      <button class="btn b-green" style="height:32px;font-size:12.5px" onclick="addStandard()">+ Add Standard Shape</button>
+    </div>
+
+    <!-- TAB 2: Custom -->
+    <div class="tpnl" id="tp-cust">
+      <div class="phnt">Enter properties from a section handbook or your own calculations.</div>
+      <div class="frow">
+        <span class="flbl">Label:</span>
+        <input type="text" class="finp" id="c-label" value="Custom 1" style="flex:1">
+      </div>
+      <div class="frow">
+        <span class="flbl">Area A (mm²):</span>
+        <input type="number" class="finp" id="c-A" value="1000" step="any" style="width:130px">
+      </div>
+      <div class="frow">
+        <span class="flbl">Centroid x₀ (mm):</span>
+        <input type="number" class="finp" id="c-x0" value="0" step="any" style="width:130px">
+      </div>
+      <div class="frow">
+        <span class="flbl">Centroid y₀ (mm):</span>
+        <input type="number" class="finp" id="c-y0" value="0" step="any" style="width:130px">
+      </div>
+      <div class="frow">
+        <span class="flbl">Ix (own centroid, mm⁴):</span>
+        <input type="number" class="finp" id="c-Ix" value="1e6" step="any" style="width:130px">
+      </div>
+      <div class="frow">
+        <span class="flbl">Iy (own centroid, mm⁴):</span>
+        <input type="number" class="finp" id="c-Iy" value="1e6" step="any" style="width:130px">
+      </div>
+      <div class="frow">
+        <span class="flbl">Ixy (own centroid, mm⁴):</span>
+        <input type="number" class="finp" id="c-Ixy" value="0" step="any" style="width:130px">
+      </div>
+      <div class="frow">
+        <span class="flbl">Sign:</span>
+        <select class="fsel" id="c-sign">
+          <option value="1">+1 (add)</option>
+          <option value="-1">−1 (void)</option>
+        </select>
+      </div>
+      <button class="btn b-blue" style="height:32px;font-size:12.5px" onclick="addCustom()">+ Add Custom Section</button>
+    </div>
+
+    <!-- TAB 3: Steel Profiles -->
+    <div class="tpnl" id="tp-steel">
+      <div class="frow">
+        <span class="flbl">Profile:</span>
+        <select class="fsel" id="dd-ptype" onchange="onProfileChanged()" style="flex:1">
+          <option value="I">I / IPE / HEA / HEB</option>
+          <option value="U">U / UPN (Channel)</option>
+          <option value="L_eq">L Angle (Equal Leg)</option>
+          <option value="L_uneq">L Angle (Unequal Leg)</option>
+          <option value="T">T-section</option>
+        </select>
+      </div>
+      <div class="frow">
+        <span class="flbl">Label:</span>
+        <input type="text" class="finp" id="p-label" value="Profile 1" style="flex:1">
+      </div>
+      <!-- Dynamic dimension rows -->
+      <div class="dim-panel" id="pdim-panel">
+        <div class="dim-title">Zone 1 — Geometry (for schematic preview)</div>
+        <div class="frow"><span class="flbl-sm" id="p-lbl0">h - total height (mm):</span><input type="number" class="finp" id="p-d0" value="200" step="any" style="width:80px" oninput="onPDimChanged()"></div>
+        <div class="frow"><span class="flbl-sm" id="p-lbl1">b - flange width (mm):</span><input type="number" class="finp" id="p-d1" value="100" step="any" style="width:80px" oninput="onPDimChanged()"></div>
+        <div class="frow" id="p-row2"><span class="flbl-sm" id="p-lbl2">tw - web thickness (mm):</span><input type="number" class="finp" id="p-d2" value="5.6" step="any" style="width:80px" oninput="onPDimChanged()"></div>
+        <div class="frow" id="p-row3"><span class="flbl-sm" id="p-lbl3">tf - flange thickness (mm):</span><input type="number" class="finp" id="p-d3" value="8.5" step="any" style="width:80px" oninput="onPDimChanged()"></div>
+      </div>
+      <!-- Zone 2 -->
+      <div class="zpanel">
+        <div class="zpanel-title">Zone 2 — Section Properties (from table, used in calculation)</div>
+        <div class="frow"><span class="flbl-sm">A (mm²):</span><input type="number" class="finp" id="p-A" value="2848" step="any" style="flex:1"></div>
+        <div class="frow"><span class="flbl-sm">Ix (mm⁴):</span><input type="number" class="finp" id="p-Ix" value="1.943e7" step="any" style="flex:1"></div>
+        <div class="frow"><span class="flbl-sm">Iy (mm⁴):</span><input type="number" class="finp" id="p-Iy" value="1.424e6" step="any" style="flex:1"></div>
+        <div class="frow hidden" id="p-row-ixy"><span class="flbl-sm">Ixy (mm⁴):</span><input type="number" class="finp" id="p-Ixy" value="0" step="any" style="flex:1"></div>
+      </div>
+      <!-- Zone 3 -->
+      <div class="frow">
+        <span class="flbl-sm" style="min-width:60px">x₀ (mm):</span>
+        <input type="number" class="finp" id="p-x0" value="0" step="any" style="width:70px">
+        <span class="flbl-sm" style="min-width:60px">y₀ (mm):</span>
+        <input type="number" class="finp" id="p-y0" value="0" step="any" style="width:70px">
+      </div>
+      <div class="frow">
+        <span class="flbl-sm" style="min-width:60px">α (°, CCW):</span>
+        <input type="number" class="finp" id="p-alpha" value="0" step="any" style="width:70px">
+        <span class="flbl-sm" style="min-width:40px">Sign:</span>
+        <select class="fsel" id="p-sign" style="width:90px">
+          <option value="1">+1 (add)</option>
+          <option value="-1">−1 (void)</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="btn b-blue" style="height:28px" onclick="previewProfile()">👁 Preview</button>
+        <button class="btn" style="height:28px;background:#6A1B9A;color:#fff" onclick="addProfile()">+ Add Profile</button>
+      </div>
+      <!-- Schematic preview canvas -->
+      <div class="schem-wrap">
+        <canvas id="cv-schem"></canvas>
+      </div>
+    </div>
+
+    <!-- SHAPES TABLE -->
+    <div class="tbl-section">
+      <div class="tbl-title">Defined Shapes &nbsp;<small style="font-weight:400;font-size:10px;color:#7090A0">(Label / Sign / x₀ / y₀ / alpha are editable)</small></div>
+      <div class="tbl-wrap">
+        <table class="stbl" id="shapes-tbl">
+          <thead><tr>
+            <th>#</th><th>Label</th><th>Type</th><th>Sign</th>
+            <th>x₀</th><th>y₀</th><th>α°</th><th>A·sign</th>
+          </tr></thead>
+          <tbody id="shapes-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: RESULTS + PLOTS -->
+  <div class="right">
+    <div class="rp-results" id="rp-results">
+      <pre id="res-pre" class="rp-hint">  Add shapes from any tab — all go into the same composite section.
+  Double-click table cells (Label / Sign / x₀ / y₀ / alpha) to edit after adding.
+  Click CALCULATE when ready.</pre>
+    </div>
+    <div class="canvrow">
+      <div class="cv-wrap">
+        <div class="cv-lbl">CROSS-SECTION</div>
+        <canvas id="cv-sec"></canvas>
+        <div class="zoom-ctrl">
+          <button onclick="zoomIn('sec')" title="Zoom In">+</button>
+          <button onclick="zoomOut('sec')" title="Zoom Out">−</button>
+          <button onclick="zoomReset('sec')" title="Reset">⊙</button>
+        </div>
+      </div>
+      <div class="cv-wrap">
+        <div class="cv-lbl">MOHR'S CIRCLE — MOMENTS OF INERTIA</div>
+        <canvas id="cv-mohr"></canvas>
+        <div class="zoom-ctrl">
+          <button onclick="zoomIn('mohr')" title="Zoom In">+</button>
+          <button onclick="zoomOut('mohr')" title="Zoom Out">−</button>
+          <button onclick="zoomReset('mohr')" title="Reset">⊙</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+const ST = { shapes: [] };
+
+function makeShape() {
+  return { type:'', dims:[], x0:0, y0:0, alpha:0, sign:1, label:'',
+    Ix_own:0, Iy_own:0, Ixy_own:0, Ix_orig:0, Iy_orig:0, Ixy_orig:0,
+    Area:0, isCustom:false, isSteel:false, xC_local:0, yC_local:0 };
+}
+
+function setst(msg) { document.getElementById('stmsg').textContent = msg; }
+
+// ============================================================
+// TAB SWITCHING
+// ============================================================
+document.querySelectorAll('.ttab').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.ttab').forEach(x => x.classList.remove('on'));
+  document.querySelectorAll('.tpnl').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  document.getElementById('tp-' + b.dataset.tab).classList.add('on');
+}));
+
+// ============================================================
+// TAB 1 — Standard Shape
+// ============================================================
+function onTypeChanged() {
+  const t = document.getElementById('dd-type').value;
+  const rows = ['row-b','row-h','row-bi','row-hi','row-r','row-ri'];
+  rows.forEach(id => document.getElementById(id).classList.add('hidden'));
+  const note = document.getElementById('dim-note');
+  switch(t) {
+    case 'rectangle':
+      show('row-b','row-h');
+      document.getElementById('lbl-b').textContent='Width b (mm):';
+      document.getElementById('lbl-h').textContent='Height h (mm):';
+      note.textContent='x₀/y₀ = centroid of the rectangle.'; break;
+    case 'circle':
+      show('row-r');
+      document.getElementById('lbl-r').textContent='Radius r (mm):';
+      note.textContent='x₀/y₀ = centre of the circle.'; break;
+    case 'semicircle':
+      show('row-r');
+      document.getElementById('lbl-r').textContent='Radius r (mm):';
+      note.textContent='y₀ = centroid = flat base + 4r/(3π). Enter centroid directly.'; break;
+    case 'triangle':
+      show('row-b','row-h');
+      document.getElementById('lbl-b').textContent='Base b (mm):';
+      document.getElementById('lbl-h').textContent='Height h (mm):';
+      note.textContent='x₀/y₀ = centroid (b/3 from left, h/3 from base).'; break;
+    case 'hollow_rect':
+      show('row-b','row-h','row-bi','row-hi');
+      note.textContent='x₀/y₀ = shared centroid.'; break;
+    case 'hollow_circ':
+      show('row-r','row-ri');
+      document.getElementById('lbl-r').textContent='Outer Radius r (mm):';
+      note.textContent='x₀/y₀ = common centre.'; break;
+  }
+}
+function show(...ids) { ids.forEach(id => document.getElementById(id).classList.remove('hidden')); }
+
+function addStandard() {
+  const s = makeShape();
+  s.type  = document.getElementById('dd-type').value;
+  s.label = document.getElementById('ef-label').value || 'Shape';
+  s.x0    = parseFloat(document.getElementById('ef-x0').value) || 0;
+  s.y0    = parseFloat(document.getElementById('ef-y0').value) || 0;
+  s.sign  = parseInt(document.getElementById('dd-sign').value);
+  const v = (id) => parseFloat(document.getElementById(id).value) || 0;
+  switch(s.type) {
+    case 'rectangle': { const b=v('ef-b'),h=v('ef-h'); s.dims=[b,h];
+      s.Area=b*h; s.Ix_own=b*h**3/12; s.Iy_own=h*b**3/12; break; }
+    case 'circle': { const r=v('ef-r'); s.dims=[r];
+      s.Area=Math.PI*r**2; s.Ix_own=Math.PI*r**4/4; s.Iy_own=s.Ix_own; break; }
+    case 'semicircle': { const r=v('ef-r'); s.dims=[r];
+      s.Area=Math.PI*r**2/2; s.Ix_own=(Math.PI/8-8/(9*Math.PI))*r**4;
+      s.Iy_own=Math.PI*r**4/8; break; }
+    case 'triangle': { const b=v('ef-b'),h=v('ef-h'); s.dims=[b,h];
+      s.Area=b*h/2; s.Ix_own=b*h**3/36; s.Iy_own=h*b**3/36; break; }
+    case 'hollow_rect': { const b=v('ef-b'),h=v('ef-h'),bi=v('ef-bi'),hi=v('ef-hi'); s.dims=[b,h,bi,hi];
+      s.Area=b*h-bi*hi; s.Ix_own=(b*h**3-bi*hi**3)/12; s.Iy_own=(h*b**3-hi*bi**3)/12; break; }
+    case 'hollow_circ': { const ro=v('ef-r'),ri=v('ef-ri'); s.dims=[ro,ri];
+      s.Area=Math.PI*(ro**2-ri**2); s.Ix_own=Math.PI*(ro**4-ri**4)/4; s.Iy_own=s.Ix_own; break; }
+  }
+  s.Ix_orig=s.Ix_own; s.Iy_orig=s.Iy_own; s.Ixy_orig=0;
+  ST.shapes.push(s);
+  refreshTable();
+  const n = ST.shapes.length;
+  document.getElementById('ef-label').value = `Shape ${n+1}`;
+  setst(`Added: ${s.label} (${s.type})`);
+}
+
+// ============================================================
+// TAB 2 — Custom
+// ============================================================
+function addCustom() {
+  const s = makeShape();
+  const v = (id) => parseFloat(document.getElementById(id).value) || 0;
+  s.type   = 'custom'; s.isCustom = true;
+  s.label  = document.getElementById('c-label').value || 'Custom';
+  s.x0     = v('c-x0'); s.y0 = v('c-y0');
+  s.Area   = v('c-A');
+  s.Ix_own = v('c-Ix'); s.Iy_own = v('c-Iy'); s.Ixy_own = v('c-Ixy');
+  s.Ix_orig = s.Ix_own; s.Iy_orig = s.Iy_own; s.Ixy_orig = s.Ixy_own;
+  s.sign = parseInt(document.getElementById('c-sign').value);
+  ST.shapes.push(s);
+  refreshTable();
+  const n = ST.shapes.length;
+  document.getElementById('c-label').value = `Custom ${n+1}`;
+  setst(`Added: ${s.label} (custom)`);
+}
+
+// ============================================================
+// TAB 3 — Steel Profiles
+// ============================================================
+const PCONFIG = {
+  'I':      { lbls:['h - total height (mm):','b - flange width (mm):','tw - web thickness (mm):','tf - flange thickness (mm):'], vals:[200,100,5.6,8.5], n:4, showIxy:false },
+  'U':      { lbls:['h - total height (mm):','b - flange width (mm):','tw - web thickness (mm):','tf - flange thickness (mm):'], vals:[200,75,8.5,11.5], n:4, showIxy:true },
+  'L_eq':   { lbls:['b - leg length (mm):','t - thickness (mm):','',''], vals:[100,10,0,0], n:2, showIxy:true },
+  'L_uneq': { lbls:['b1 - horiz. leg (mm):','b2 - vert. leg (mm):','t - thickness (mm):',''], vals:[100,75,10,0], n:3, showIxy:true },
+  'T':      { lbls:['h - total height (mm):','b - flange width (mm):','tw - web thickness (mm):','tf - flange thickness (mm):'], vals:[200,120,10,15], n:4, showIxy:false },
+};
+
+function onProfileChanged() {
+  const ptype = document.getElementById('dd-ptype').value;
+  const cfg = PCONFIG[ptype];
+  for (let k=0;k<4;k++) {
+    const lbl=document.getElementById(`p-lbl${k}`), row=document.getElementById(`p-row${k}`)||document.querySelector(`#pdim-panel .frow:nth-child(${k+2})`);
+    const inp=document.getElementById(`p-d${k}`);
+    if(k<cfg.n){ lbl.textContent=cfg.lbls[k]; inp.value=cfg.vals[k]; lbl.closest('.frow').classList.remove('hidden'); }
+    else { lbl.closest('.frow').classList.add('hidden'); }
+  }
+  // Show/hide Ixy
+  document.getElementById('p-row-ixy').classList.toggle('hidden', !cfg.showIxy);
+  // Auto-compute properties
+  updateProfileProps();
+  drawProfileSchematic();
+}
+
+function onPDimChanged() { updateProfileProps(); drawProfileSchematic(); }
+
+function getPDims() {
+  const ptype = document.getElementById('dd-ptype').value;
+  const n = PCONFIG[ptype].n;
+  const dims = [];
+  for (let k=0;k<n;k++) dims.push(parseFloat(document.getElementById(`p-d${k}`).value)||0);
+  return dims;
+}
+
+function computeProfileProps(ptype, dims) {
+  let Area=0, xCl=0, yCl=0, Ix=0, Iy=0, Ixy=0;
+  switch(ptype) {
+    case 'I': {
+      const [h,b,tw,tf]=dims;
+      Area=2*b*tf+tw*(h-2*tf); xCl=b/2; yCl=h/2;
+      Ix=(b*h**3-(b-tw)*(h-2*tf)**3)/12;
+      Iy=(2*tf*b**3+(h-2*tf)*tw**3)/12; break;
+    }
+    case 'U': {
+      const [h,b,tw,tf]=dims;
+      const Aw=tw*h, xCw=tw/2, Af=(b-tw)*tf, xCf=(tw+b)/2;
+      const A=Aw+2*Af; const xC=(Aw*xCw+2*Af*xCf)/A;
+      Area=A; xCl=xC; yCl=h/2;
+      Ix=tw*h**3/12+2*((b-tw)*tf**3/12+(b-tw)*tf*(h/2-tf/2)**2);
+      Iy=h*tw**3/12+tw*h*(tw/2-xC)**2+2*(tf*(b-tw)**3/12+(b-tw)*tf*((tw+b)/2-xC)**2);
+      break;
+    }
+    case 'L_eq': {
+      const [b,t]=dims;
+      const Ah=b*t,xCh=b/2,yCh=t/2, Av=t*(b-t),xCv=t/2,yCv=(b+t)/2;
+      const A=Ah+Av; const xC=(Ah*xCh+Av*xCv)/A, yC=(Ah*yCh+Av*yCv)/A;
+      Area=A; xCl=xC; yCl=yC;
+      Ix=b*t**3/12+b*t*(yCh-yC)**2+t*(b-t)**3/12+t*(b-t)*(yCv-yC)**2;
+      Iy=t*b**3/12+b*t*(xCh-xC)**2+(b-t)*t**3/12+t*(b-t)*(xCv-xC)**2;
+      Ixy=Ah*(xCh-xC)*(yCh-yC)+Av*(xCv-xC)*(yCv-yC); break;
+    }
+    case 'L_uneq': {
+      const [b1,b2,t]=dims;
+      const Ah=b1*t,xCh=b1/2,yCh=t/2, Av=t*(b2-t),xCv=t/2,yCv=(b2+t)/2;
+      const A=Ah+Av; const xC=(Ah*xCh+Av*xCv)/A, yC=(Ah*yCh+Av*yCv)/A;
+      Area=A; xCl=xC; yCl=yC;
+      Ix=b1*t**3/12+b1*t*(yCh-yC)**2+t*(b2-t)**3/12+t*(b2-t)*(yCv-yC)**2;
+      Iy=t*b1**3/12+b1*t*(xCh-xC)**2+(b2-t)*t**3/12+t*(b2-t)*(xCv-xC)**2;
+      Ixy=Ah*(xCh-xC)*(yCh-yC)+Av*(xCv-xC)*(yCv-yC); break;
+    }
+    case 'T': {
+      const [h,b,tw,tf]=dims;
+      const Af=b*tf, yCf=h-tf/2, Aw=tw*(h-tf), yCw=(h-tf)/2;
+      const A=Af+Aw; const yC=(Af*yCf+Aw*yCw)/A;
+      Area=A; xCl=b/2; yCl=yC;
+      Ix=b*tf**3/12+b*tf*(yCf-yC)**2+tw*(h-tf)**3/12+tw*(h-tf)*(yCw-yC)**2;
+      Iy=tf*b**3/12+(h-tf)*tw**3/12; break;
+    }
+  }
+  return { Area, xCl, yCl, Ix, Iy, Ixy };
+}
+
+function updateProfileProps() {
+  const ptype = document.getElementById('dd-ptype').value;
+  const dims = getPDims();
+  const p = computeProfileProps(ptype, dims);
+  document.getElementById('p-A').value  = +p.Area.toFixed(4);
+  document.getElementById('p-Ix').value = +p.Ix.toExponential(4);
+  document.getElementById('p-Iy').value = +p.Iy.toExponential(4);
+  document.getElementById('p-Ixy').value = +p.Ixy.toFixed(4);
+}
+
+function rotateInertia(Ix, Iy, Ixy, alpha_deg) {
+  const a = alpha_deg * Math.PI / 180;
+  const Avg=(Ix+Iy)/2, Dif=(Ix-Iy)/2;
+  return {
+    Ixr:  Avg + Dif*Math.cos(2*a) - Ixy*Math.sin(2*a),
+    Iyr:  Avg - Dif*Math.cos(2*a) + Ixy*Math.sin(2*a),
+    Ixyr: Dif*Math.sin(2*a) + Ixy*Math.cos(2*a)
+  };
+}
+
+function previewProfile() { drawProfileSchematic(); setst('Profile schematic updated.'); }
+
+function addProfile() {
+  const ptype  = document.getElementById('dd-ptype').value;
+  const dims   = getPDims();
+  const alpha  = parseFloat(document.getElementById('p-alpha').value) || 0;
+  const geom   = computeProfileProps(ptype, dims);
+  const s = makeShape();
+  s.isSteel   = true;
+  s.type      = ptype;
+  s.dims      = dims;
+  s.xC_local  = geom.xCl;
+  s.yC_local  = geom.yCl;
+  // Zone-2 values (tabulated or computed)
+  s.Area      = parseFloat(document.getElementById('p-A').value)  || geom.Area;
+  s.Ix_orig   = parseFloat(document.getElementById('p-Ix').value) || geom.Ix;
+  s.Iy_orig   = parseFloat(document.getElementById('p-Iy').value) || geom.Iy;
+  const showIxy = !document.getElementById('p-row-ixy').classList.contains('hidden');
+  s.Ixy_orig  = showIxy ? (parseFloat(document.getElementById('p-Ixy').value)||0) : 0;
+  // Apply rotation
+  const rot = rotateInertia(s.Ix_orig, s.Iy_orig, s.Ixy_orig, alpha);
+  s.Ix_own=rot.Ixr; s.Iy_own=rot.Iyr; s.Ixy_own=rot.Ixyr;
+  s.label  = document.getElementById('p-label').value || 'Profile';
+  s.x0     = parseFloat(document.getElementById('p-x0').value) || 0;
+  s.y0     = parseFloat(document.getElementById('p-y0').value) || 0;
+  s.alpha  = alpha;
+  s.sign   = parseInt(document.getElementById('p-sign').value);
+  ST.shapes.push(s);
+  refreshTable();
+  const n = ST.shapes.length;
+  document.getElementById('p-label').value = `Profile ${n+1}`;
+  drawProfileSchematic();
+  setst(`Added: ${s.label} (${ptype})`);
+}
+
+// ============================================================
+// SHAPES TABLE
+// ============================================================
+function refreshTable() {
+  const tbody = document.getElementById('shapes-tbody');
+  tbody.innerHTML = '';
+  ST.shapes.forEach((s, i) => {
+    const tr = document.createElement('tr');
+    const Asign = (s.sign * s.Area).toFixed(1);
+
+    // # (read-only)
+    const td0=document.createElement('td'); td0.className='ro'; td0.textContent=i+1; tr.appendChild(td0);
+
+    // Label (editable text)
+    const td1=document.createElement('td');
+    const inp1=document.createElement('input'); inp1.type='text'; inp1.value=s.label;
+    inp1.addEventListener('change', ()=>{ ST.shapes[i].label=inp1.value; refreshTable(); });
+    td1.appendChild(inp1); tr.appendChild(td1);
+
+    // Type (read-only)
+    const td2=document.createElement('td'); td2.className='ro'; td2.textContent=s.type; tr.appendChild(td2);
+
+    // Sign (editable select)
+    const td3=document.createElement('td');
+    const sel=document.createElement('select');
+    ['+1','-1'].forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; if((s.sign>0&&v==='+1')||(s.sign<0&&v==='-1')) o.selected=true; sel.appendChild(o); });
+    sel.addEventListener('change', ()=>{ ST.shapes[i].sign = sel.value==='+1'?1:-1; refreshTable(); });
+    td3.appendChild(sel); tr.appendChild(td3);
+
+    // x0 (editable)
+    const td4=document.createElement('td');
+    const inp4=document.createElement('input'); inp4.type='number'; inp4.step='any'; inp4.value=s.x0;
+    inp4.addEventListener('change', ()=>{ ST.shapes[i].x0=parseFloat(inp4.value)||0; });
+    td4.appendChild(inp4); tr.appendChild(td4);
+
+    // y0 (editable)
+    const td5=document.createElement('td');
+    const inp5=document.createElement('input'); inp5.type='number'; inp5.step='any'; inp5.value=s.y0;
+    inp5.addEventListener('change', ()=>{ ST.shapes[i].y0=parseFloat(inp5.value)||0; });
+    td5.appendChild(inp5); tr.appendChild(td5);
+
+    // alpha (editable — re-rotates if steel)
+    const td6=document.createElement('td');
+    const inp6=document.createElement('input'); inp6.type='number'; inp6.step='any'; inp6.value=s.alpha;
+    inp6.addEventListener('change', ()=>{
+      const a=parseFloat(inp6.value)||0;
+      ST.shapes[i].alpha=a;
+      if(ST.shapes[i].isSteel){
+        const rot=rotateInertia(ST.shapes[i].Ix_orig,ST.shapes[i].Iy_orig,ST.shapes[i].Ixy_orig,a);
+        ST.shapes[i].Ix_own=rot.Ixr; ST.shapes[i].Iy_own=rot.Iyr; ST.shapes[i].Ixy_own=rot.Ixyr;
+      }
+    });
+    td6.appendChild(inp6); tr.appendChild(td6);
+
+    // A·sign (read-only)
+    const td7=document.createElement('td'); td7.className='ro'; td7.textContent=Asign; tr.appendChild(td7);
+
+    tbody.appendChild(tr);
+  });
+}
+
+// ============================================================
+// CALCULATE
+// ============================================================
+function doCalc() {
+  const sh = ST.shapes;
+  if (!sh.length) { setst('No shapes defined.'); return; }
+  const n=sh.length;
+  let A_total=0;
+  const sA=sh.map(s=>s.sign*s.Area);
+  A_total=sA.reduce((a,b)=>a+b,0);
+  if (Math.abs(A_total)<1e-14) { setst('Total area = 0. Check signs.'); return; }
+  const xC=sh.reduce((s,si,i)=>s+sA[i]*si.x0,0)/A_total;
+  const yC=sh.reduce((s,si,i)=>s+sA[i]*si.y0,0)/A_total;
+  let Ix=0,Iy=0,Ixy=0;
+  sh.forEach((si,i)=>{
+    const dx=si.x0-xC, dy=si.y0-yC;
+    Ix  += si.sign*(si.Ix_own  + si.Area*dy*dy);
+    Iy  += si.sign*(si.Iy_own  + si.Area*dx*dx);
+    Ixy += si.sign*(si.Ixy_own + si.Area*dx*dy);
+  });
+  const kx=Math.sqrt(Math.abs(Ix/A_total)), ky=Math.sqrt(Math.abs(Iy/A_total));
+  const Iavg=(Ix+Iy)/2, R=Math.sqrt(((Ix-Iy)/2)**2+Ixy**2);
+  const I1=Iavg+R, I2=Iavg-R;
+  const thetaP=0.5*Math.atan2(-2*Ixy,Ix-Iy)*180/Math.PI;
+  // Extremes for section moduli
+  const {ymax,ymin,xmax,xmin}=getExtremes(sh);
+  const e_top=ymax-yC, e_bot=yC-ymin, e_r=xmax-xC, e_l=xC-xmin;
+  const Wx_t=e_top>0?Ix/e_top:NaN, Wx_b=e_bot>0?Ix/e_bot:NaN;
+  const Wy_r=e_r>0?Iy/e_r:NaN,     Wy_l=e_l>0?Iy/e_l:NaN;
+  const fmt=(v,d=4)=>isNaN(v)?'—':v.toFixed(d);
+  const fmtE=(v)=>isNaN(v)?'—':v.toExponential(4);
+  const sep1='-'.repeat(82), sep2='='.repeat(82);
+  let lines=[
+    '',
+    `  ${'#'.padEnd(3)} ${'Label'.padEnd(14)} ${'Type'.padEnd(22)} ${'Sign'.padStart(5)} ${'A·sign'.padStart(10)} ${'x0'.padStart(10)} ${'y0'.padStart(6)} ${'Ix·s(own)'.padStart(14)}`,
+    sep1
+  ];
+  sh.forEach((si,i)=>{
+    lines.push(`  ${String(i+1).padEnd(3)} ${si.label.padEnd(14)} ${si.type.padEnd(22)} ${String(si.sign>0?'+1':'-1').padStart(5)} ${sA[i].toFixed(2).padStart(10)} ${si.x0.toFixed(3).padStart(10)} ${si.y0.toFixed(3).padStart(6)} ${(si.sign*si.Ix_own).toExponential(4).padStart(14)}`);
+  });
+  lines.push(sep2);
+  lines.push(`  Total Area             A    = ${fmt(A_total,4).padStart(14)}  mm²`);
+  lines.push('');
+  lines.push(`  Centroid               xC   = ${fmt(xC,4).padStart(14)}  mm`);
+  lines.push(`                         yC   = ${fmt(yC,4).padStart(14)}  mm`);
+  lines.push(sep1);
+  lines.push(`  Moment of inertia      Ix   = ${fmtE(Ix).padStart(14)}  mm⁴  (centroidal x-axis)`);
+  lines.push(`                         Iy   = ${fmtE(Iy).padStart(14)}  mm⁴  (centroidal y-axis)`);
+  lines.push(`                         Ixy  = ${fmtE(Ixy).padStart(14)}  mm⁴  (product of inertia)`);
+  lines.push(sep1);
+  lines.push(`  Radius of gyration     kx   = ${fmt(kx).padStart(14)}  mm`);
+  lines.push(`                         ky   = ${fmt(ky).padStart(14)}  mm`);
+  lines.push(sep1);
+  lines.push(`  Principal inertia      I1   = ${fmtE(I1).padStart(14)}  mm⁴  (maximum)`);
+  lines.push(`                         I2   = ${fmtE(I2).padStart(14)}  mm⁴  (minimum)`);
+  lines.push(`  Principal axis angle   θp   = ${fmt(thetaP).padStart(14)}  deg`);
+  lines.push(sep1);
+  lines.push(`  Section modulus        Wx_top   = ${fmtE(Wx_t).padStart(12)}  mm³`);
+  lines.push(`                         Wx_bot   = ${fmtE(Wx_b).padStart(12)}  mm³`);
+  lines.push(`                         Wy_right = ${fmtE(Wy_r).padStart(12)}  mm³`);
+  lines.push(`                         Wy_left  = ${fmtE(Wy_l).padStart(12)}  mm³`);
+  lines.push(sep2);
+  document.getElementById('res-pre').className='';
+  document.getElementById('res-pre').textContent = lines.join('\n');
+  drawSection(xC, yC);
+  drawMohr(Ix, Iy, Ixy, I1, I2, Iavg, R);
+  setst(`Calculated · A=${fmt(A_total,1)} mm² · xC=${fmt(xC,2)} mm · yC=${fmt(yC,2)} mm · I1=${I1.toExponential(3)} mm⁴`);
+}
+
+function getExtremes(sh) {
+  let ymin=Infinity,ymax=-Infinity,xmin=Infinity,xmax=-Infinity;
+  sh.forEach(s=>{
+    let py,px;
+    if (s.isCustom) { px=[s.x0,s.x0]; py=[s.y0,s.y0]; }
+    else if (s.isSteel) {
+      const d=s.dims;
+      let bx,by;
+      if      (s.type==='L_eq')   { bx=[0,d[0]]; by=[0,d[0]]; }
+      else if (s.type==='L_uneq') { bx=[0,d[0]]; by=[0,d[1]]; }
+      else                        { bx=[0,d[1]||d[0]]; by=[0,d[0]]; }
+      px=[bx[0]-s.xC_local+s.x0, bx[1]-s.xC_local+s.x0];
+      py=[by[0]-s.yC_local+s.y0, by[1]-s.yC_local+s.y0];
+    } else {
+      const d=s.dims; const [x0,y0]=[s.x0,s.y0];
+      switch(s.type){
+        case 'rectangle':  px=[x0-d[0]/2,x0+d[0]/2]; py=[y0-d[1]/2,y0+d[1]/2]; break;
+        case 'circle':     px=[x0-d[0],x0+d[0]]; py=[y0-d[0],y0+d[0]]; break;
+        case 'semicircle': { const yb=y0-4*d[0]/(3*Math.PI); px=[x0-d[0],x0+d[0]]; py=[yb,yb+d[0]]; break; }
+        case 'triangle':   px=[x0-d[0]/3,x0+2*d[0]/3]; py=[y0-d[1]/3,y0+2*d[1]/3]; break;
+        default:           px=[x0-d[0]/2,x0+d[0]/2]; py=[y0-d[1]/2,y0+d[1]/2];
+      }
+    }
+    ymin=Math.min(ymin,...py); ymax=Math.max(ymax,...py);
+    xmin=Math.min(xmin,...px); xmax=Math.max(xmax,...px);
+  });
+  return {ymin,ymax,xmin,xmax};
+}
+
+// ============================================================
+// CANVAS: SECTION
+// ============================================================
+const COLORS = ['#4080FF','#FF4040','#40B040','#FF8C00','#A040C0','#00B0C0','#FF60A0','#80A000','#0080A0','#C06000'];
+const ZSec = {sc:1,px:0,py:0,drag:false,lx:0,ly:0};
+const ZMohr= {sc:1,px:0,py:0,drag:false,lx:0,ly:0};
+
+function zoomIn(w)    { const z=w==='sec'?ZSec:ZMohr; z.sc=Math.min(z.sc*1.25,40); redrawBoth(); }
+function zoomOut(w)   { const z=w==='sec'?ZSec:ZMohr; z.sc=Math.max(z.sc*0.8,0.05); redrawBoth(); }
+function zoomReset(w) { const z=w==='sec'?ZSec:ZMohr; z.sc=1;z.px=0;z.py=0; redrawBoth(); }
+
+function setupCanvasEvents(cvId, Z) {
+  const cv=document.getElementById(cvId);
+  cv.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const rect=cv.getBoundingClientRect();
+    const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+    const f=e.deltaY<0?1.15:0.87;
+    Z.px=mx+(Z.px-mx)*f; Z.py=my+(Z.py-my)*f;
+    Z.sc=Math.max(0.05,Math.min(40,Z.sc*f));
+    redrawBoth();
+  },{passive:false});
+  cv.addEventListener('mousedown',e=>{Z.drag=true;Z.lx=e.clientX;Z.ly=e.clientY;cv.style.cursor='grabbing';});
+  cv.addEventListener('mousemove',e=>{if(!Z.drag)return;Z.px+=e.clientX-Z.lx;Z.py+=e.clientY-Z.ly;Z.lx=e.clientX;Z.ly=e.clientY;redrawBoth();});
+  cv.addEventListener('mouseup',()=>{Z.drag=false;cv.style.cursor='default';});
+  cv.addEventListener('mouseleave',()=>{Z.drag=false;cv.style.cursor='default';});
+}
+
+function redrawBoth() {
+  drawSection(ST._xC||0, ST._yC||0);
+  if (ST._mohrArgs) drawMohr(...ST._mohrArgs);
+}
+
+function getSectionTF(cv) {
+  const sh=ST.shapes; if(!sh.length) return null;
+  const {xmin,xmax,ymin,ymax}=getExtremes(sh);
+  const rx=xmax-xmin||1, ry=ymax-ymin||1, mR=Math.max(rx,ry);
+  const pad=55, W=cv.width-2*pad, H=cv.height-2*pad;
+  const sc=Math.min(W/(rx+mR*.5), H/(ry+mR*.5));
+  const cx=(xmin+xmax)/2, cy=(ymin+ymax)/2;
+  const esc=sc*ZSec.sc;
+  return { p:(wx,wy)=>({x:cv.width/2+(wx-cx)*esc+ZSec.px, y:cv.height/2-(wy-cy)*esc+ZSec.py}), sc:esc };
+}
+
+function drawSection(xC, yC) {
+  ST._xC=xC; ST._yC=yC;
+  const cv=document.getElementById('cv-sec');
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.fillStyle='#0C1524'; ctx.fillRect(0,0,cv.width,cv.height);
+  drawSectionGrid(ctx,cv);
+  if(!ST.shapes.length) return;
+  const tf=getSectionTF(cv); if(!tf) return;
+  const {p,sc}=tf;
+  // Draw each shape
+  ST.shapes.forEach((s,i)=>{
+    const col=COLORS[i%COLORS.length];
+    const alp=s.sign>0?0.45:0.15;
+    ctx.globalAlpha=alp;
+    ctx.fillStyle=col;
+    ctx.strokeStyle=hexDark(col);
+    ctx.lineWidth=1.5;
+    drawShapePatch(ctx,s,p);
+    ctx.globalAlpha=1;
+    // centroid marker +
+    const pc=p(s.x0,s.y0);
+    ctx.strokeStyle='#000'; ctx.lineWidth=1.2;
+    ctx.beginPath(); ctx.moveTo(pc.x-7,pc.y); ctx.lineTo(pc.x+7,pc.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pc.x,pc.y-7); ctx.lineTo(pc.x,pc.y+7); ctx.stroke();
+    // index label
+    ctx.fillStyle=col; ctx.font='bold 10px "Barlow Condensed",sans-serif';
+    ctx.fillText(` ${i+1}`,pc.x,pc.y-5);
+  });
+  // Centroidal axes
+  const pc=p(xC,yC);
+  const ext=Math.max(cv.width,cv.height);
+  ctx.strokeStyle='rgba(255,80,80,0.7)'; ctx.lineWidth=1.3; ctx.setLineDash([7,5]);
+  ctx.beginPath(); ctx.moveTo(0,pc.y); ctx.lineTo(cv.width,pc.y); ctx.stroke(); // x-axis
+  ctx.strokeStyle='rgba(80,120,255,0.7)';
+  ctx.beginPath(); ctx.moveTo(pc.x,0); ctx.lineTo(pc.x,cv.height); ctx.stroke(); // y-axis
+  ctx.setLineDash([]);
+  // Centroid star
+  ctx.fillStyle='#FF3030';
+  ctx.beginPath();
+  for(let j=0;j<5;j++){const a=-Math.PI/2+j*4*Math.PI/5; ctx.lineTo(pc.x+12*Math.cos(a),pc.y+12*Math.sin(a)); ctx.lineTo(pc.x+5*Math.cos(a+2*Math.PI/5),pc.y+5*Math.sin(a+2*Math.PI/5));}
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#FF8080'; ctx.font='bold 10px Barlow,sans-serif';
+  ctx.fillText(`  C(${xC.toFixed(1)},${yC.toFixed(1)})`,pc.x,pc.y-14);
+  // Axes labels
+  ctx.fillStyle='rgba(255,80,80,0.7)'; ctx.font='10px "Barlow Condensed"';
+  ctx.fillText('x [mm]',cv.width-45,pc.y-5);
+  ctx.fillStyle='rgba(80,120,255,0.7)';
+  ctx.fillText('y [mm]',pc.x+5,15);
+}
+
+function drawSectionGrid(ctx,cv){
+  ctx.strokeStyle='rgba(18,40,70,0.9)'; ctx.lineWidth=1;
+  for(let x=0;x<cv.width;x+=55){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,cv.height);ctx.stroke();}
+  for(let y=0;y<cv.height;y+=55){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(cv.width,y);ctx.stroke();}
+}
+
+function drawShapePatch(ctx, s, p) {
+  if (s.isCustom) {
+    // Circle marker
+    const pc=p(s.x0,s.y0);
+    ctx.beginPath(); ctx.arc(pc.x,pc.y,20,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    return;
+  }
+  if (s.isSteel) { drawSteelPatch(ctx,s,p); return; }
+  drawStdPatch(ctx,s,p);
+}
+
+function drawStdPatch(ctx, s, p) {
+  const [x0,y0]=[s.x0,s.y0]; const d=s.dims;
+  ctx.beginPath();
+  switch(s.type) {
+    case 'rectangle': {
+      const [b,h]=d;
+      const corners=[[x0-b/2,y0-h/2],[x0+b/2,y0-h/2],[x0+b/2,y0+h/2],[x0-b/2,y0+h/2]];
+      corners.forEach(([wx,wy],i)=>{ const pp=p(wx,wy); i?ctx.lineTo(pp.x,pp.y):ctx.moveTo(pp.x,pp.y); });
+      ctx.closePath(); break;
+    }
+    case 'circle': {
+      const r=d[0]; const pc=p(x0,y0); const pr=p(x0+r,y0);
+      ctx.arc(pc.x,pc.y,Math.abs(pr.x-pc.x),0,Math.PI*2); break;
+    }
+    case 'semicircle': {
+      const r=d[0], yb=y0-4*r/(3*Math.PI);
+      const pc=p(x0,yb); const pr=p(x0+r,yb);
+      const rx=Math.abs(pr.x-pc.x);
+      ctx.arc(pc.x,pc.y,rx,Math.PI,0,false); ctx.lineTo(pc.x-rx,pc.y); ctx.closePath(); break;
+    }
+    case 'triangle': {
+      const [b,h]=d;
+      const pts=[[x0-b/3,y0-h/3],[x0+2*b/3,y0-h/3],[x0-b/3,y0+2*h/3]];
+      pts.forEach(([wx,wy],i)=>{ const pp=p(wx,wy); i?ctx.lineTo(pp.x,pp.y):ctx.moveTo(pp.x,pp.y); });
+      ctx.closePath(); break;
+    }
+    case 'hollow_rect': {
+      const [b,h,bi,hi]=d;
+      const outer=[[x0-b/2,y0-h/2],[x0+b/2,y0-h/2],[x0+b/2,y0+h/2],[x0-b/2,y0+h/2]];
+      const inner=[[x0-bi/2,y0-hi/2],[x0+bi/2,y0-hi/2],[x0+bi/2,y0+hi/2],[x0-bi/2,y0+hi/2]];
+      outer.forEach(([wx,wy],i)=>{ const pp=p(wx,wy); i?ctx.lineTo(pp.x,pp.y):ctx.moveTo(pp.x,pp.y); });
+      ctx.closePath();
+      inner.slice().reverse().forEach(([wx,wy],i)=>{ const pp=p(wx,wy); i?ctx.lineTo(pp.x,pp.y):ctx.moveTo(pp.x,pp.y); });
+      ctx.closePath(); break;
+    }
+    case 'hollow_circ': {
+      const [ro,ri]=d; const pc=p(x0,y0);
+      const ropx=Math.abs(p(x0+ro,y0).x-pc.x), ripx=Math.abs(p(x0+ri,y0).x-pc.x);
+      ctx.arc(pc.x,pc.y,ropx,0,Math.PI*2,false);
+      ctx.arc(pc.x,pc.y,ripx,0,Math.PI*2,true); break;
+    }
+  }
+  ctx.fill('evenodd'); ctx.stroke();
+}
+
+function drawSteelPatch(ctx, s, p) {
+  const d=s.dims, a=s.alpha*Math.PI/180;
+  const ox=s.x0-s.xC_local, oy=s.y0-s.yC_local;
+  const rfn=(px,py)=>{
+    const xg=s.x0+(ox+px-s.x0)*Math.cos(a)-(oy+py-s.y0)*Math.sin(a);
+    const yg=s.y0+(ox+px-s.x0)*Math.sin(a)+(oy+py-s.y0)*Math.cos(a);
+    return p(xg,yg);
+  };
+  const poly=(pts)=>{
+    ctx.beginPath();
+    pts.forEach(([px,py],i)=>{ const pp=rfn(px,py); i?ctx.lineTo(pp.x,pp.y):ctx.moveTo(pp.x,pp.y); });
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  };
+  switch(s.type){
+    case 'I': { const[h,b,tw,tf]=d;
+      poly([[0,0],[b,0],[b,tf],[0,tf]]);
+      poly([[(b-tw)/2,tf],[(b+tw)/2,tf],[(b+tw)/2,h-tf],[(b-tw)/2,h-tf]]);
+      poly([[0,h-tf],[b,h-tf],[b,h],[0,h]]); break; }
+    case 'U': { const[h,b,tw,tf]=d;
+      poly([[0,0],[tw,0],[tw,h],[0,h]]);
+      poly([[tw,0],[b,0],[b,tf],[tw,tf]]);
+      poly([[tw,h-tf],[b,h-tf],[b,h],[tw,h]]); break; }
+    case 'L_eq': { const[b,t]=d;
+      poly([[0,0],[b,0],[b,t],[0,t]]);
+      poly([[0,t],[t,t],[t,b],[0,b]]); break; }
+    case 'L_uneq': { const[b1,b2,t]=d;
+      poly([[0,0],[b1,0],[b1,t],[0,t]]);
+      poly([[0,t],[t,t],[t,b2],[0,b2]]); break; }
+    case 'T': { const[h,b,tw,tf]=d;
+      poly([[0,h-tf],[b,h-tf],[b,h],[0,h]]);
+      poly([[(b-tw)/2,0],[(b+tw)/2,0],[(b+tw)/2,h-tf],[(b-tw)/2,h-tf]]); break; }
+  }
+}
+
+function hexDark(hex) {
+  // Darken a hex colour for stroke
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return `rgb(${Math.round(r*.5)},${Math.round(g*.5)},${Math.round(b*.5)})`;
+}
+
+// ============================================================
+// CANVAS: MOHR'S CIRCLE
+// ============================================================
+function drawMohr(Ix, Iy, Ixy, I1, I2, Iavg, R) {
+  ST._mohrArgs=[Ix,Iy,Ixy,I1,I2,Iavg,R];
+  const cv=document.getElementById('cv-mohr');
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.fillStyle='#0C1524'; ctx.fillRect(0,0,cv.width,cv.height);
+  drawSectionGrid(ctx,cv);
+
+  const Rpad=Math.max(R,Math.abs(Iavg)*0.02)*1.4||Math.max(Math.abs(Ix),Math.abs(Iy),Math.abs(I1),Math.abs(I2))*0.15||1;
+  const pad=55, W=cv.width-2*pad, H=cv.height-2*pad;
+  const sc=Math.min(W/(2*Rpad), H/(2*Rpad));
+  const esc=sc*ZMohr.sc;
+  const p=(Iv,Ixv)=>({ x:cv.width/2+(Iv-Iavg)*esc+ZMohr.px, y:cv.height/2-Ixv*esc+ZMohr.py });
+
+  // Axes
+  const c0=p(Iavg,0);
+  ctx.strokeStyle='rgba(100,130,160,0.4)'; ctx.lineWidth=1; ctx.setLineDash([5,5]);
+  ctx.beginPath(); ctx.moveTo(0,c0.y); ctx.lineTo(cv.width,c0.y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(c0.x,0); ctx.lineTo(c0.x,cv.height); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Circle
+  const pr=p(Iavg+R,0);
+  ctx.strokeStyle='#4080FF'; ctx.lineWidth=2.2;
+  ctx.beginPath(); ctx.arc(c0.x,c0.y,Math.abs(pr.x-c0.x),0,Math.PI*2); ctx.stroke();
+
+  // Diameter line (Ix,Ixy) — (Iy,-Ixy)
+  const pA=p(Ix,Ixy), pB=p(Iy,-Ixy);
+  ctx.strokeStyle='rgba(200,200,200,0.5)'; ctx.lineWidth=1.2;
+  ctx.beginPath(); ctx.moveTo(pA.x,pA.y); ctx.lineTo(pB.x,pB.y); ctx.stroke();
+
+  // Points
+  const dot=(px,py,col,shape,sz=9)=>{
+    ctx.fillStyle=col; ctx.strokeStyle=hexDark(col); ctx.lineWidth=1.2;
+    ctx.beginPath();
+    if(shape==='o') ctx.arc(px,py,sz,0,Math.PI*2);
+    else if(shape==='s'){ctx.rect(px-sz,py-sz,2*sz,2*sz);}
+    else if(shape==='^'){ctx.moveTo(px,py-sz);ctx.lineTo(px+sz,py+sz);ctx.lineTo(px-sz,py+sz);ctx.closePath();}
+    else if(shape==='v'){ctx.moveTo(px,py+sz);ctx.lineTo(px+sz,py-sz);ctx.lineTo(px-sz,py-sz);ctx.closePath();}
+    ctx.fill(); ctx.stroke();
+  };
+  dot(pA.x,pA.y,'#FF4040','o');
+  dot(pB.x,pB.y,'#40B040','s');
+  const pI1=p(I1,0), pI2=p(I2,0), pC=p(Iavg,0);
+  dot(pI1.x,pI1.y,'#4080FF','^',10);
+  dot(pI2.x,pI2.y,'#4080FF','v',10);
+  ctx.strokeStyle='#fff'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(pC.x-8,pC.y); ctx.lineTo(pC.x+8,pC.y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pC.x,pC.y-8); ctx.lineTo(pC.x,pC.y+8); ctx.stroke();
+
+  // Labels
+  ctx.font='9px "JetBrains Mono",monospace';
+  const lbl=(x,y,txt,col,align='left')=>{ ctx.fillStyle=col; ctx.textAlign=align; ctx.fillText(txt,x,y); };
+  const off=Rpad*esc*0.05;
+  lbl(pA.x+off,pA.y-off,`(Ix,Ixy)\n${Ix.toExponential(3)}`,'#FF8080');
+  ctx.fillStyle='#FF8080'; ctx.font='9px "JetBrains Mono"'; ctx.textAlign='left';
+  ctx.fillText(`(Ix,Ixy)`,pA.x+off,pA.y-off-10);
+  ctx.fillText(`${Ix.toExponential(3)}`,pA.x+off,pA.y-off);
+  ctx.fillText(`${Ixy.toExponential(3)}`,pA.x+off,pA.y-off+10);
+  ctx.fillStyle='#60C060'; ctx.textAlign='left';
+  ctx.fillText(`(Iy,-Ixy)`,pB.x+off,pB.y+off);
+  ctx.fillText(`${Iy.toExponential(3)}`,pB.x+off,pB.y+off+10);
+  ctx.fillStyle='#80B0FF';
+  ctx.fillText(`I₁=${I1.toExponential(3)}`,pI1.x+off,pI1.y-12);
+  ctx.textAlign='right';
+  ctx.fillText(`I₂=${I2.toExponential(3)}`,pI2.x-off,pI2.y-12);
+  ctx.textAlign='center';
+  ctx.fillStyle='rgba(180,180,180,0.7)';
+  ctx.fillText(`C=${Iavg.toExponential(3)}`,pC.x,pC.y-Rpad*esc*0.85);
+  // Axis labels
+  ctx.textAlign='right'; ctx.fillStyle='rgba(100,140,180,0.6)';
+  ctx.fillText('I [mm⁴]',cv.width-8,c0.y-6);
+  ctx.textAlign='left';
+  ctx.fillText('Ixy [mm⁴]',c0.x+6,16);
+}
+
+// ============================================================
+// PROFILE SCHEMATIC CANVAS (Tab 3)
+// ============================================================
+function drawProfileSchematic() {
+  const cv=document.getElementById('cv-schem');
+  if(!cv.parentElement.clientWidth) return;
+  cv.width=cv.parentElement.clientWidth;
+  cv.height=cv.parentElement.clientHeight;
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.fillStyle='#F0F4FF'; ctx.fillRect(0,0,cv.width,cv.height);
+
+  const ptype=document.getElementById('dd-ptype').value;
+  const dims=getPDims();
+  const alpha=parseFloat(document.getElementById('p-alpha').value)||0;
+  const geom=computeProfileProps(ptype,dims);
+  const {xCl,yCl}=geom;
+  const a=alpha*Math.PI/180;
+
+  // Build patches (list of polygon vertex arrays in local coords)
+  let patches=[];
+  switch(ptype){
+    case 'I': { const[h,b,tw,tf]=dims;
+      patches=[[[0,0],[b,0],[b,tf],[0,tf]],[[(b-tw)/2,tf],[(b+tw)/2,tf],[(b+tw)/2,h-tf],[(b-tw)/2,h-tf]],[[0,h-tf],[b,h-tf],[b,h],[0,h]]]; break;}
+    case 'U': { const[h,b,tw,tf]=dims;
+      patches=[[[0,0],[tw,0],[tw,h],[0,h]],[[tw,0],[b,0],[b,tf],[tw,tf]],[[tw,h-tf],[b,h-tf],[b,h],[tw,h]]]; break;}
+    case 'L_eq': { const[b,t]=dims;
+      patches=[[[0,0],[b,0],[b,t],[0,t]],[[0,t],[t,t],[t,b],[0,b]]]; break;}
+    case 'L_uneq': { const[b1,b2,t]=dims;
+      patches=[[[0,0],[b1,0],[b1,t],[0,t]],[[0,t],[t,t],[t,b2],[0,b2]]]; break;}
+    case 'T': { const[h,b,tw,tf]=dims;
+      patches=[[[0,h-tf],[b,h-tf],[b,h],[0,h]],[[(b-tw)/2,0],[(b+tw)/2,0],[(b+tw)/2,h-tf],[(b-tw)/2,h-tf]]]; break;}
+  }
+
+  // Rotate all patches around local centroid
+  const rot=(px,py)=>[xCl+(px-xCl)*Math.cos(a)-(py-yCl)*Math.sin(a), yCl+(px-xCl)*Math.sin(a)+(py-yCl)*Math.cos(a)];
+  const rotPatches=patches.map(pts=>pts.map(([px,py])=>rot(px,py)));
+
+  // Compute bounding box of rotated patches
+  const allX=rotPatches.flat().map(p=>p[0]);
+  const allY=rotPatches.flat().map(p=>p[1]);
+  const xRange=Math.max(...allX)-Math.min(...allX)||1;
+  const yRange=Math.max(...allY)-Math.min(...allY)||1;
+  const mR=Math.max(xRange,yRange);
+  const pad2=28, W=cv.width-2*pad2, H=cv.height-2*pad2;
+  const sc=Math.min(W/(xRange+mR*.4), H/(yRange+mR*.4));
+  const cxL=(Math.min(...allX)+Math.max(...allX))/2;
+  const cyL=(Math.min(...allY)+Math.max(...allY))/2;
+  const tp=(wx,wy)=>({x:cv.width/2+(wx-cxL)*sc, y:cv.height/2-(wy-cyL)*sc});
+
+  // Draw patches
+  const fc='rgba(90,140,220,0.55)', ec='#1A3870';
+  rotPatches.forEach(pts=>{
+    ctx.beginPath();
+    pts.forEach(([wx,wy],i)=>{ const pp=tp(wx,wy); i?ctx.lineTo(pp.x,pp.y):ctx.moveTo(pp.x,pp.y); });
+    ctx.closePath();
+    ctx.fillStyle=fc; ctx.fill(); ctx.strokeStyle=ec; ctx.lineWidth=1.5; ctx.stroke();
+  });
+
+  // Centroid marker
+  const [rcx,rcy]=rot(xCl,yCl);
+  const pc2=tp(rcx,rcy);
+  ctx.fillStyle='#CC2020';
+  ctx.beginPath();
+  for(let j=0;j<5;j++){const ag=-Math.PI/2+j*4*Math.PI/5; ctx.lineTo(pc2.x+8*Math.cos(ag),pc2.y+8*Math.sin(ag)); ctx.lineTo(pc2.x+3.5*Math.cos(ag+2*Math.PI/5),pc2.y+3.5*Math.sin(ag+2*Math.PI/5));}
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#CC4040'; ctx.font='8px "Barlow Condensed"';
+  ctx.fillText(`C(${xCl.toFixed(1)},${yCl.toFixed(1)})`,pc2.x+6,pc2.y-4);
+  if(Math.abs(alpha)>0.01){ctx.fillStyle='#2244AA'; ctx.fillText(`α=${alpha.toFixed(1)}°`,pc2.x+6,pc2.y+10);}
+
+  // Dim label
+  const lbls=['h','b','tw','tf','b','t','b1','b2','t'];
+  const dstr=dims.map((d,i)=>i<dims.length?`${['h','b','tw','tf','b','t','b1','b2','t'][i]}=${d}`:null).filter(Boolean).join('  ');
+  ctx.fillStyle='#1A3870'; ctx.font='bold 8px "Barlow Condensed"';
+  ctx.fillText(ptype+': '+dstr, 6, cv.height-6);
+}
+
+// ============================================================
+// EXAMPLE, REMOVE, CLEAR, SAVE/LOAD
+// ============================================================
+function doExample() {
+  ST.shapes=[];
+  const mkRect=(lbl,b,h,x0,y0)=>{
+    const s=makeShape(); s.type='rectangle'; s.label=lbl; s.dims=[b,h];
+    s.x0=x0; s.y0=y0; s.Area=b*h;
+    s.Ix_own=b*h**3/12; s.Iy_own=h*b**3/12; s.Ix_orig=s.Ix_own; s.Iy_orig=s.Iy_own; s.sign=1;
+    return s;
+  };
+  ST.shapes=[mkRect('Bot. Flange',120,20,60,10), mkRect('Web',20,200,60,120), mkRect('Top Flange',120,20,60,230)];
+  refreshTable();
+  document.getElementById('res-pre').className='rp-hint';
+  document.getElementById('res-pre').textContent='  I-section example (3 rectangles): Bot. Flange 120×20 | Web 20×200 | Top Flange 120×20\n  Click CALCULATE.';
+  ZSec.sc=1;ZSec.px=0;ZSec.py=0;
+  setst('I-section example loaded. Click CALCULATE.');
+}
+
+function doRemoveLast(){
+  if(ST.shapes.length){ ST.shapes.pop(); refreshTable(); setst('Last shape removed.'); }
+}
+function doClearAll(){
+  ST.shapes=[]; refreshTable();
+  document.getElementById('res-pre').className='rp-hint';
+  document.getElementById('res-pre').textContent='  Cleared. Add shapes from any tab and click CALCULATE.';
+  const cvS=document.getElementById('cv-sec'), cvM=document.getElementById('cv-mohr');
+  [cvS,cvM].forEach(c=>{const ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='#0C1524';ctx.fillRect(0,0,c.width,c.height);});
+  setst('All shapes cleared.');
+}
+
+function doSave(){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify({shapes:ST.shapes},null,2)],{type:'application/json'}));
+  a.download='CompositeSectionGUI_project.json'; a.click();
+  setst('Project saved.');
+}
+function doLoad(){
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='.json';
+  inp.onchange=e=>{
+    const f=e.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=ev=>{
+      try{ const d=JSON.parse(ev.target.result); ST.shapes=d.shapes||[]; refreshTable(); setst('Project loaded: '+f.name); }
+      catch(err){ setst('Load error: '+err.message); }
+    }; r.readAsText(f);
+  }; inp.click();
+}
+
+// ============================================================
+// CANVAS RESIZE
+// ============================================================
+function resizeCanvases(){
+  ['cv-sec','cv-mohr'].forEach(id=>{
+    const cv=document.getElementById(id);
+    const wrap=cv.parentElement;
+    cv.width=wrap.clientWidth; cv.height=wrap.clientHeight;
+  });
+  redrawBoth();
+  const scv=document.getElementById('cv-schem');
+  if(scv.parentElement.clientWidth){ scv.width=scv.parentElement.clientWidth; scv.height=scv.parentElement.clientHeight; }
+  drawProfileSchematic();
+}
+new ResizeObserver(resizeCanvases).observe(document.querySelector('.canvrow'));
+
+// ============================================================
+// INIT
+// ============================================================
+function init(){
+  onTypeChanged();
+  onProfileChanged();
+  setupCanvasEvents('cv-sec',ZSec);
+  setupCanvasEvents('cv-mohr',ZMohr);
+  const scv=document.getElementById('cv-schem');
+  new ResizeObserver(()=>{ if(scv.parentElement.clientWidth){ scv.width=scv.parentElement.clientWidth; scv.height=scv.parentElement.clientHeight; drawProfileSchematic(); }}).observe(scv.parentElement);
+  setTimeout(resizeCanvases,100);
+}
+init();
+</script>
+</body>
+</html>
