@@ -156,6 +156,7 @@ table.stbl tr:hover td:not(.ro){background:#F5F9FF;}
 <!-- TOOLBAR -->
 <div class="tb">
   <button class="btn b-orange" onclick="doCalc()">▶ CALCULATE</button>
+  <button class="btn b-blue"   onclick="doUpdatePlot()">↻ Update Plot</button>
   <button class="btn b-blue"   onclick="doExample()">📐 Example</button>
   <button class="btn b-red"    onclick="doRemoveLast()">− Remove Last</button>
   <button class="btn b-gray"   onclick="doClearAll()">✕ Clear All</button>
@@ -759,7 +760,7 @@ function doCalc() {
   document.getElementById('res-pre').textContent = lines.join('\n');
   drawSection(xC, yC);
   drawMohr(Ix, Iy, Ixy, I1, I2, Iavg, R);
-  setst(`Calculated · A=${fmt(A_total,1)} mm² · xC=${fmt(xC,2)} mm · yC=${fmt(yC,2)} mm · I1=${I1.toExponential(3)} mm⁴`);
+  setst('Calculation complete.');
 }
 
 function getExtremes(sh) {
@@ -820,7 +821,7 @@ function setupCanvasEvents(cvId, Z) {
 }
 
 function redrawBoth() {
-  drawSection(ST._xC||0, ST._yC||0);
+  drawSection(ST._xC!==undefined?ST._xC:null, ST._yC!==undefined?ST._yC:null);
   if (ST._mohrArgs) drawMohr(...ST._mohrArgs);
 }
 
@@ -864,26 +865,25 @@ function drawSection(xC, yC) {
     ctx.fillStyle=col; ctx.font='bold 10px "Barlow Condensed",sans-serif';
     ctx.fillText(` ${i+1}`,pc.x,pc.y-5);
   });
-  // Centroidal axes
-  const pc=p(xC,yC);
-  const ext=Math.max(cv.width,cv.height);
-  ctx.strokeStyle='rgba(255,80,80,0.7)'; ctx.lineWidth=1.3; ctx.setLineDash([7,5]);
-  ctx.beginPath(); ctx.moveTo(0,pc.y); ctx.lineTo(cv.width,pc.y); ctx.stroke(); // x-axis
-  ctx.strokeStyle='rgba(80,120,255,0.7)';
-  ctx.beginPath(); ctx.moveTo(pc.x,0); ctx.lineTo(pc.x,cv.height); ctx.stroke(); // y-axis
-  ctx.setLineDash([]);
-  // Centroid star
-  ctx.fillStyle='#FF3030';
-  ctx.beginPath();
-  for(let j=0;j<5;j++){const a=-Math.PI/2+j*4*Math.PI/5; ctx.lineTo(pc.x+12*Math.cos(a),pc.y+12*Math.sin(a)); ctx.lineTo(pc.x+5*Math.cos(a+2*Math.PI/5),pc.y+5*Math.sin(a+2*Math.PI/5));}
-  ctx.closePath(); ctx.fill();
-  ctx.fillStyle='#FF8080'; ctx.font='bold 10px Barlow,sans-serif';
-  ctx.fillText(`  C(${xC.toFixed(1)},${yC.toFixed(1)})`,pc.x,pc.y-14);
-  // Axes labels
-  ctx.fillStyle='rgba(255,80,80,0.7)'; ctx.font='10px "Barlow Condensed"';
-  ctx.fillText('x [mm]',cv.width-45,pc.y-5);
-  ctx.fillStyle='rgba(80,120,255,0.7)';
-  ctx.fillText('y [mm]',pc.x+5,15);
+  // Centroidal axes and star — only when centroid is known (after CALCULATE)
+  if (xC !== null && yC !== null) {
+    const pc=p(xC,yC);
+    ctx.strokeStyle='rgba(255,80,80,0.7)'; ctx.lineWidth=1.3; ctx.setLineDash([7,5]);
+    ctx.beginPath(); ctx.moveTo(0,pc.y); ctx.lineTo(cv.width,pc.y); ctx.stroke();
+    ctx.strokeStyle='rgba(80,120,255,0.7)';
+    ctx.beginPath(); ctx.moveTo(pc.x,0); ctx.lineTo(pc.x,cv.height); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#FF3030';
+    ctx.beginPath();
+    for(let j=0;j<5;j++){const a=-Math.PI/2+j*4*Math.PI/5; ctx.lineTo(pc.x+12*Math.cos(a),pc.y+12*Math.sin(a)); ctx.lineTo(pc.x+5*Math.cos(a+2*Math.PI/5),pc.y+5*Math.sin(a+2*Math.PI/5));}
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#FF8080'; ctx.font='bold 10px Barlow,sans-serif';
+    ctx.fillText(`  C(${xC.toFixed(1)},${yC.toFixed(1)})`,pc.x,pc.y-14);
+    ctx.fillStyle='rgba(255,80,80,0.7)'; ctx.font='10px "Barlow Condensed"';
+    ctx.fillText('x [mm]',cv.width-45,pc.y-5);
+    ctx.fillStyle='rgba(80,120,255,0.7)';
+    ctx.fillText('y [mm]',pc.x+5,15);
+  }
 }
 
 function drawSectionGrid(ctx,cv){
@@ -1147,6 +1147,12 @@ function drawProfileSchematic() {
 // ============================================================
 // EXAMPLE, REMOVE, CLEAR, SAVE/LOAD
 // ============================================================
+function doUpdatePlot(){
+  if(!ST.shapes.length){ setst('No shapes to plot.'); return; }
+  drawSection(null, null);
+  setst('Plot updated.');
+}
+
 function doExample() {
   ST.shapes=[];
   const mkRect=(lbl,b,h,x0,y0)=>{
@@ -1167,7 +1173,8 @@ function doRemoveLast(){
   if(ST.shapes.length){ ST.shapes.pop(); refreshTable(); setst('Last shape removed.'); }
 }
 function doClearAll(){
-  ST.shapes=[]; refreshTable();
+  ST.shapes=[]; ST._xC=undefined; ST._yC=undefined; ST._mohrArgs=null;
+  refreshTable();
   document.getElementById('res-pre').className='rp-hint';
   document.getElementById('res-pre').textContent='  Cleared. Add shapes from any tab and click CALCULATE.';
   const cvS=document.getElementById('cv-sec'), cvM=document.getElementById('cv-mohr');
