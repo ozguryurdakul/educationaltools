@@ -238,7 +238,7 @@ table.stbl tr:hover td:not(.ro){background:#F5F9FF;}
           <input type="number" class="finp" id="ef-ri" value="30" step="any" style="width:90px">
         </div>
         <div class="frow hidden" id="row-orient">
-          <span class="flbl-sm">Right angle at:</span>
+          <span class="flbl-sm" id="lbl-orient">Right angle at:</span>
           <select class="fsel" id="ef-orient" style="flex:1">
             <option value="BL">Bottom-Left</option>
             <option value="BR">Bottom-Right</option>
@@ -438,13 +438,25 @@ function onTypeChanged() {
       document.getElementById('lbl-r').textContent='Radius r (mm):';
       note.textContent='x₀/y₀ = centre of the circle.'; break;
     case 'semicircle':
-      show('row-r');
+      show('row-r','row-orient');
       document.getElementById('lbl-r').textContent='Radius r (mm):';
-      note.textContent='y₀ = centroid = flat base + 4r/(3π). Enter centroid directly.'; break;
+      document.getElementById('lbl-orient').textContent='Flat side:';
+      document.getElementById('ef-orient').innerHTML=
+        '<option value="B">Flat Bottom (arc up)</option>'+
+        '<option value="T">Flat Top (arc down)</option>'+
+        '<option value="L">Flat Left (arc right)</option>'+
+        '<option value="R">Flat Right (arc left)</option>';
+      note.textContent='x₀/y₀ = centroid. Offset from flat = 4r/(3π). Enter centroid directly.'; break;
     case 'triangle':
       show('row-b','row-h','row-orient');
       document.getElementById('lbl-b').textContent='Base b (mm):';
       document.getElementById('lbl-h').textContent='Height h (mm):';
+      document.getElementById('lbl-orient').textContent='Right angle at:';
+      document.getElementById('ef-orient').innerHTML=
+        '<option value="BL">Bottom-Left</option>'+
+        '<option value="BR">Bottom-Right</option>'+
+        '<option value="TL">Top-Left</option>'+
+        '<option value="TR">Top-Right</option>';
       note.textContent='x₀/y₀ = centroid (b/3 from left, h/3 from base).'; break;
     case 'hollow_rect':
       show('row-b','row-h','row-bi','row-hi');
@@ -470,9 +482,18 @@ function addStandard() {
       s.Area=b*h; s.Ix_own=b*h**3/12; s.Iy_own=h*b**3/12; break; }
     case 'circle': { const r=v('ef-r'); s.dims=[r];
       s.Area=Math.PI*r**2; s.Ix_own=Math.PI*r**4/4; s.Iy_own=s.Ix_own; break; }
-    case 'semicircle': { const r=v('ef-r'); s.dims=[r];
-      s.Area=Math.PI*r**2/2; s.Ix_own=(Math.PI/8-8/(9*Math.PI))*r**4;
-      s.Iy_own=Math.PI*r**4/8; break; }
+    case 'semicircle': {
+      const r=v('ef-r');
+      const orient=document.getElementById('ef-orient').value; // B|T|L|R
+      s.dims=[r,orient];
+      s.Area=Math.PI*r**2/2;
+      const Ipar=(Math.PI/8-8/(9*Math.PI))*r**4; // axis parallel to flat side
+      const Iperp=Math.PI*r**4/8;                // axis perpendicular to flat side
+      // For B/T: flat is horizontal → Ix=Ipar (horiz axis), Iy=Iperp
+      // For L/R: flat is vertical   → Ix=Iperp (horiz axis), Iy=Ipar
+      if(orient==='L'||orient==='R'){ s.Ix_own=Iperp; s.Iy_own=Ipar; }
+      else                          { s.Ix_own=Ipar;  s.Iy_own=Iperp; }
+      break; }
     case 'triangle': {
       const b=v('ef-b'),h=v('ef-h');
       const orient=document.getElementById('ef-orient').value; // BL|BR|TL|TR
@@ -824,7 +845,14 @@ function getExtremes(sh) {
       switch(s.type){
         case 'rectangle':  px=[x0-d[0]/2,x0+d[0]/2]; py=[y0-d[1]/2,y0+d[1]/2]; break;
         case 'circle':     px=[x0-d[0],x0+d[0]]; py=[y0-d[0],y0+d[0]]; break;
-        case 'semicircle': { const yb=y0-4*d[0]/(3*Math.PI); px=[x0-d[0],x0+d[0]]; py=[yb,yb+d[0]]; break; }
+        case 'semicircle': {
+          const [r,ori='B']=d; const off=4*r/(3*Math.PI);
+          switch(ori){
+            case 'T': px=[x0-r,x0+r]; py=[y0+off-r, y0+off]; break;
+            case 'L': px=[x0-off, x0-off+r]; py=[y0-r, y0+r]; break;
+            case 'R': px=[x0+off-r, x0+off]; py=[y0-r, y0+r]; break;
+            default:  px=[x0-r,x0+r]; py=[y0-off, y0-off+r];  // B
+          } break; }
         case 'triangle': {
           const [b,h,ori='BL']=d;
           const txs={BL:[x0-b/3,x0+2*b/3,x0-b/3],BR:[x0+b/3,x0-2*b/3,x0+b/3],TL:[x0-b/3,x0+2*b/3,x0-b/3],TR:[x0+b/3,x0-2*b/3,x0+b/3]};
@@ -965,10 +993,21 @@ function drawStdPatch(ctx, s, p) {
       ctx.arc(pc.x,pc.y,Math.abs(pr.x-pc.x),0,Math.PI*2); break;
     }
     case 'semicircle': {
-      const r=d[0], yb=y0-4*r/(3*Math.PI);
-      const pc=p(x0,yb); const pr=p(x0+r,yb);
+      const [r,orient='B']=d;
+      const off=4*r/(3*Math.PI); // centroid-to-flat-base distance
+      // Base centre (midpoint of flat diameter) and arc angle range in canvas coords
+      // Canvas: Y increases downward, clockwise = false means CCW in math, but
+      // we use the sign of arc sweep to get the correct half-circle.
+      let bx,by,a1,a2;
+      switch(orient){
+        case 'T': bx=x0;      by=y0+off; a1=0;          a2=Math.PI;     break; // flat top, arc down
+        case 'L': bx=x0-off;  by=y0;     a1=-Math.PI/2;  a2=Math.PI/2;  break; // flat left, arc right
+        case 'R': bx=x0+off;  by=y0;     a1=Math.PI/2;   a2=3*Math.PI/2;break; // flat right, arc left
+        default:  bx=x0;      by=y0-off; a1=Math.PI;    a2=0;            break; // flat bottom, arc up
+      }
+      const pc=p(bx,by), pr=p(bx+r,by);
       const rx=Math.abs(pr.x-pc.x);
-      ctx.arc(pc.x,pc.y,rx,Math.PI,0,false); ctx.lineTo(pc.x-rx,pc.y); ctx.closePath(); break;
+      ctx.arc(pc.x,pc.y,rx,a1,a2,false); ctx.closePath(); break;
     }
     case 'triangle': {
       const [b,h,orient='BL']=d;
