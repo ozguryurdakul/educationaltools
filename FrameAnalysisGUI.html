@@ -163,6 +163,75 @@ canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 .rsp th { background: #050D16; color: #5A90B0; font-family: var(--cond); font-size: 9.5px; font-weight: 700; letter-spacing: .07em; padding: 3px 10px; text-align: center; border: 1px solid #101E2E; }
 .rsp td { color: #5A90B8; padding: 2px 10px; text-align: right; border: 1px solid #0D1C2C; }
 .rsp td:first-child { text-align: center; color: #5A90B0; }
+
+/* ── PRINT ── */
+@media print {
+  body > *:not(#print-area) { display: none !important; }
+  #print-area { display: block !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+#print-area {
+  display: none;
+  font-family: 'Barlow', 'Arial', sans-serif;
+  font-size: 10pt;
+  color: #111;
+  background: #fff;
+  padding: 14mm 14mm 10mm;
+}
+#print-area .ph { border-bottom: 2.5pt solid #1565C0; padding-bottom: 6pt; margin-bottom: 12pt; }
+#print-area .ph h1 { font-size: 16pt; font-weight: 700; color: #1565C0; margin: 0; letter-spacing: .04em; }
+#print-area .ph p  { font-size: 9pt; color: #555; margin: 1pt 0; }
+#print-area .ph .pr { float: right; text-align: right; font-size: 8.5pt; color: #666; line-height: 1.5; }
+#print-area h2 { font-size: 11pt; font-weight: 700; color: #1565C0; border-left: 3pt solid #1565C0;
+  padding-left: 6pt; margin: 14pt 0 6pt; letter-spacing: .04em; text-transform: uppercase; }
+#print-area h3 { font-size: 9.5pt; font-weight: 700; color: #333; margin: 10pt 0 3pt; }
+#print-area h4 { font-size: 8.5pt; font-weight: 700; color: #555; margin: 6pt 0 2pt; }
+#print-area table.pt {
+  border-collapse: collapse; font-size: 8.5pt; font-family: 'JetBrains Mono','Courier New',monospace;
+  margin-bottom: 8pt; page-break-inside: avoid;
+}
+#print-area table.pt th {
+  background: #E3F0FF; color: #1565C0; border: .5pt solid #AAC4E0;
+  padding: 3pt 8pt; text-align: center; font-weight: 700; letter-spacing: .05em;
+  font-family: 'Barlow Condensed','Arial Narrow',sans-serif; font-size: 8pt;
+}
+#print-area table.pt td {
+  border: .5pt solid #C8D8EA; padding: 2pt 8pt; text-align: right;
+  font-family: 'JetBrains Mono','Courier New',monospace;
+}
+#print-area table.pt td:first-child { text-align: center; color: #555; }
+#print-area .tbl-row { display: flex; gap: 14pt; flex-wrap: wrap; margin-bottom: 6pt; }
+#print-area .tbl-row > div { flex: 1; min-width: 180pt; }
+#print-area .img-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8pt; margin: 8pt 0; }
+#print-area .img-cell { border: .5pt solid #C8D8EA; border-radius: 3pt; overflow: hidden; }
+#print-area .img-cell .img-lbl {
+  background: #E3F0FF; color: #1565C0; font-size: 7.5pt; font-weight: 700;
+  font-family: 'Barlow Condensed','Arial Narrow',sans-serif; letter-spacing: .06em;
+  padding: 2pt 6pt; text-transform: uppercase;
+}
+#print-area .img-cell img { width: 100%; display: block; }
+#print-area .pb { page-break-before: always; }
+#print-area .mat-section { margin-bottom: 10pt; }
+#print-area .mat-wrap { overflow: visible; margin-bottom: 6pt; }
+#print-area table.mt {
+  border-collapse: collapse; font-size: 7pt; font-family: 'JetBrains Mono','Courier New',monospace;
+  page-break-inside: avoid;
+}
+#print-area table.mt th {
+  background: #E3F0FF; color: #1565C0; border: .5pt solid #AAC4E0;
+  padding: 2pt 5pt; text-align: center; font-size: 6.5pt; letter-spacing: .04em;
+  font-family: 'Barlow Condensed','Arial Narrow',sans-serif; font-weight: 700;
+}
+#print-area table.mt td { border: .5pt solid #C8D8EA; padding: 1.5pt 5pt; text-align: right; color: #111; }
+#print-area table.mt td.lbl { color: #1565C0; text-align: center; background: #F0F6FF; font-size: 6.5pt; }
+#print-area table.vt {
+  border-collapse: collapse; font-size: 7pt; font-family: 'JetBrains Mono','Courier New',monospace;
+  display: inline-table; margin-right: 10pt; vertical-align: top; page-break-inside: avoid;
+}
+#print-area table.vt th { background: #E3F0FF; color: #1565C0; border: .5pt solid #AAC4E0; padding: 2pt 6pt; font-size: 6.5pt; font-family: 'Barlow Condensed','Arial Narrow',sans-serif; font-weight: 700; }
+#print-area table.vt td { border: .5pt solid #C8D8EA; padding: 1.5pt 6pt; text-align: right; }
+#print-area table.vt td.lbl { text-align: left; color: #1565C0; background: #F0F6FF; font-size: 6.5pt; }
+#print-area .vec-row { display: flex; flex-wrap: wrap; gap: 10pt; margin-bottom: 8pt; }
 </style>
 </head>
 <body>
@@ -191,6 +260,8 @@ canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
   <div class="vsep"></div>
   <button class="btn b-navy"  onclick="doSave()">💾 Save Project</button>
   <button class="btn b-brown" onclick="doLoad()">📂 Load Project</button>
+  <div class="vsep"></div>
+  <button class="btn b-print" onclick="doPrint()" title="Print results, diagrams and matrices">🖨 Print</button>
   <span class="st" id="stmsg">Ready — enter structure data and click Analyze.</span>
 </div>
 
@@ -321,6 +392,7 @@ canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
   </div>
 </div>
 
+<div id="print-area"></div>
 <script>
 // ============================================================
 // STATE
@@ -762,6 +834,10 @@ function renderResTbls() {
 const cv=document.getElementById('cv');
 const ctx=cv.getContext('2d');
 
+// Print-mode flag (white bg, darkened lines)
+let PM = false;
+const PF = n => PM ? Math.round(n * 3.5) : n; // print font-size scaler (~7pt)
+
 // Zoom / pan state
 const ZS = { sc:1, px:0, py:0, drag:false, lx:0, ly:0 };
 function doZoomIn()    { ZS.sc=Math.min(ZS.sc*1.25,40); draw(); }
@@ -810,32 +886,35 @@ function draw() {
   }
   ov.style.display='none';
   ctx.clearRect(0,0,cv.width,cv.height);
-  ctx.fillStyle='#0C1524'; ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.fillStyle = PM ? '#F5F8FC' : '#0C1524'; ctx.fillRect(0,0,cv.width,cv.height);
   drawGrid();
   const v=ST.view;
   if      (v==='preview')   drawPreview();
   else if (v==='deformed')  drawDeformed();
   else if (v==='reactions') drawReactions();
   else drawDiagram(v);
-  // Label
-  const lbl={preview:'STRUCTURE PREVIEW — Geometry, Supports & Loads',
-    deformed:'DEFORMED SHAPE',reactions:'REACTION FORCES',
-    axial:'AXIAL FORCE DIAGRAM (N)',shear:'SHEAR FORCE DIAGRAM (V)',
-    moment:'BENDING MOMENT DIAGRAM (M)'};
-  ctx.fillStyle='rgba(30,136,229,0.8)';
-  ctx.font='bold 11px "Barlow Condensed",sans-serif';
-  ctx.fillText(lbl[v]||'', 12, 20);
+  // Label — omit in PM (img-lbl in print HTML already shows it)
+  if (!PM) {
+    const lbl={preview:'STRUCTURE PREVIEW — Geometry, Supports & Loads',
+      deformed:'DEFORMED SHAPE',reactions:'REACTION FORCES',
+      axial:'AXIAL FORCE DIAGRAM (N)',shear:'SHEAR FORCE DIAGRAM (V)',
+      moment:'BENDING MOMENT DIAGRAM (M)'};
+    ctx.fillStyle='rgba(30,136,229,0.8)';
+    ctx.font='bold 11px "Barlow Condensed",sans-serif';
+    ctx.fillText(lbl[v]||'', 12, 20);
+  }
 }
 
 function drawGrid() {
-  ctx.strokeStyle='rgba(18,40,70,0.9)'; ctx.lineWidth=1;
+  ctx.strokeStyle = PM ? 'rgba(100,140,190,0.18)' : 'rgba(18,40,70,0.9)'; ctx.lineWidth=1;
   for(let x=0;x<cv.width;x+=55){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,cv.height);ctx.stroke();}
   for(let y=0;y<cv.height;y+=55){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(cv.width,y);ctx.stroke();}
 }
 
 function drawElements(tf, color='#3A6ACC', lw=2.5, dash=[]) {
   const {nodes,elems}=ST; const {p}=tf;
-  ctx.strokeStyle=color; ctx.lineWidth=lw; ctx.setLineDash(dash);
+  const _col = PM && color==='#3A6ACC' ? '#1A3A8A' : color;
+  ctx.strokeStyle=_col; ctx.lineWidth=lw; ctx.setLineDash(dash);
   for(const el of elems){
     const n1=nodes[el[1]-1], n2=nodes[el[2]-1]; if(!n1||!n2) continue;
     const p1=p(n1[1],n1[2]), p2=p(n2[1],n2[2]);
@@ -843,7 +922,7 @@ function drawElements(tf, color='#3A6ACC', lw=2.5, dash=[]) {
     // Element label at midpoint
     if (dash.length===0) {
       const mx=(p1.x+p2.x)/2, my=(p1.y+p2.y)/2;
-      ctx.fillStyle='#3A6ACC'; ctx.font='bold 10px "Barlow Condensed",sans-serif';
+      ctx.fillStyle='#3A6ACC'; ctx.font=`bold ${PF(10)}px "Barlow Condensed",sans-serif`;
       ctx.fillText(`E${el[0]}`,mx+4,my-4);
     }
     // Hinge symbols
@@ -858,8 +937,8 @@ function drawNodes(tf) {
   const {nodes}=ST; const {p}=tf;
   for(const n of nodes){
     const pt=p(n[1],n[2]);
-    ctx.fillStyle='#FF5252'; ctx.beginPath(); ctx.arc(pt.x,pt.y,5,0,Math.PI*2); ctx.fill();
-    ctx.fillStyle='#FF7070'; ctx.font='bold 11px "Barlow Condensed",sans-serif';
+    ctx.fillStyle = PM ? '#CC1010' : '#FF5252'; ctx.beginPath(); ctx.arc(pt.x,pt.y,5,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = PM ? '#990000' : '#FF7070'; ctx.font=`bold ${PF(11)}px "Barlow Condensed",sans-serif`;
     ctx.fillText(`N${n[0]}`,pt.x+8,pt.y-5);
   }
 }
@@ -952,20 +1031,20 @@ function drawNodalLoads(tf){
     if(Math.abs(Fx)>1e-6){
       const dir=Math.sign(Fx);
       drawArrow(pt.x-dir*al,pt.y,pt.x,pt.y,'#FF80FF',2);
-      ctx.fillStyle='#FF80FF'; ctx.font='10px Barlow,sans-serif';
+      ctx.fillStyle='#FF80FF'; ctx.font=`${PF(10)}px Barlow,sans-serif`;
       ctx.fillText(`Fx=${Fx}kN`,pt.x+dir*(al*.6+to),pt.y-5);
     }
     // Fy: vertical arrow (positive = downward in Y-down convention → arrow points down in canvas)
     if(Math.abs(Fy)>1e-6){
       const dir=Math.sign(Fy); // positive=downward→canvas y increases (down on screen)
       drawArrow(pt.x,pt.y-dir*al,pt.x,pt.y,'#FF80FF',2);
-      ctx.fillStyle='#FF80FF'; ctx.font='10px Barlow,sans-serif';
+      ctx.fillStyle='#FF80FF'; ctx.font=`${PF(10)}px Barlow,sans-serif`;
       ctx.fillText(`Fy=${Fy}kN`,pt.x+6,pt.y+dir*(al*.6+to));
     }
     // Mz: moment arc (CW positive in MATLAB convention)
     if(Math.abs(Mz)>1e-6){
       drawMoment(pt.x,pt.y,mR*sc*.07,Mz>0,'#FF80FF');
-      ctx.fillStyle='#FF80FF'; ctx.font='10px Barlow,sans-serif';
+      ctx.fillStyle='#FF80FF'; ctx.font=`${PF(10)}px Barlow,sans-serif`;
       ctx.fillText(`M=${Mz}kN·m`,pt.x+mR*sc*.09,pt.y-mR*sc*.04);
     }
   }
@@ -991,13 +1070,13 @@ function drawMemberLoads(tf){
       // Point force at ap from start
       const t=ap/Lw, lx=p1.x+t*dx, ly=p1.y+t*dy;
       drawArrow(lx-sign*px2*al,ly-sign*py2*al,lx,ly,'#FF5050',2);
-      ctx.fillStyle='#FF5050'; ctx.font='10px Barlow,sans-serif';
+      ctx.fillStyle='#FF5050'; ctx.font=`${PF(10)}px Barlow,sans-serif`;
       ctx.fillText(`P=${mag}`,lx-sign*px2*al*1.5,ly-sign*py2*al*1.5);
     } else if(type===2){
       // Concentrated moment at ap
       const t=ap/Lw, lx=p1.x+t*dx, ly=p1.y+t*dy;
       drawMoment(lx,ly,al*.55,mag>0,'#FF5050');
-      ctx.fillStyle='#FF5050'; ctx.font='10px Barlow,sans-serif';
+      ctx.fillStyle='#FF5050'; ctx.font=`${PF(10)}px Barlow,sans-serif`;
       ctx.fillText(`M=${mag}`,lx+px2*al,ly+py2*al);
     } else if(type===3){
       // UDL over loaded length
@@ -1013,7 +1092,7 @@ function drawMemberLoads(tf){
       ctx.beginPath(); ctx.moveTo(p1.x-sign*px2*al,p1.y-sign*py2*al);
       ctx.lineTo(ex-sign*px2*al,ey-sign*py2*al); ctx.stroke();
       const mx=(p1.x+ex)/2, my=(p1.y+ey)/2;
-      ctx.fillStyle='#FF5050'; ctx.font='bold 10px Barlow,sans-serif';
+      ctx.fillStyle='#FF5050'; ctx.font=`bold ${PF(10)}px Barlow,sans-serif`;
       ctx.fillText(`q=${mag}kN/m`,mx-sign*px2*al*1.6,my-sign*py2*al*1.6);
     }
   }
@@ -1041,10 +1120,10 @@ function drawDeformed(){
   const defSc=sf*mR*0.15/maxDisp;
 
   // Original (dashed)
-  drawElements(tf,'rgba(180,210,255,0.75)',1.8,[5,4]);
+  drawElements(tf, PM ? 'rgba(0,60,160,0.45)' : 'rgba(180,210,255,0.75)', PM?1.2:1.8, [5,4]);
 
   // Deformed shape per element (Hermite interpolation)
-  ctx.strokeStyle='#FFD740'; ctx.lineWidth=2.5;
+  ctx.strokeStyle = PM ? '#B06000' : '#FFD740'; ctx.lineWidth=2.5;
   for(let i=0;i<elems.length;i++){
     const ed=ED[i], er=ER[i];
     const {xs,ys,xe,ye,L,cosE,sinE,rel,ml,Emod,Ix}=ed;
@@ -1094,7 +1173,7 @@ function drawDeformed(){
     // Y_def for node: ys - ND[1]*defSc  (MATLAB convention: Y_def = ys - Dy*ScaleFactor)
     const wx=n[1]+d[0]*defSc, wy=n[2]-d[1]*defSc;
     const pt=p(wx,wy);
-    ctx.fillStyle='#FFD740'; ctx.beginPath(); ctx.arc(pt.x,pt.y,4,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = PM ? '#B06000' : '#FFD740'; ctx.beginPath(); ctx.arc(pt.x,pt.y,4,0,Math.PI*2); ctx.fill();
   });
 
   drawSupports(tf);
@@ -1104,9 +1183,9 @@ function drawDeformed(){
   ctx.beginPath(); ctx.moveTo(14,40); ctx.lineTo(44,40); ctx.stroke();
   ctx.setLineDash([]); ctx.strokeStyle='#FFD740'; ctx.lineWidth=2;
   ctx.beginPath(); ctx.moveTo(14,52); ctx.lineTo(44,52); ctx.stroke();
-  ctx.fillStyle='#6080A0'; ctx.font='11px Barlow,sans-serif';
+  ctx.fillStyle='#6080A0'; ctx.font=`${PF(11)}px Barlow,sans-serif`;
   ctx.fillText('Original',47,44); ctx.fillText('Deformed',47,56);
-  ctx.fillStyle='#3A5070'; ctx.font='10px Barlow,sans-serif';
+  ctx.fillStyle='#3A5070'; ctx.font=`${PF(10)}px Barlow,sans-serif`;
   ctx.fillText(`Visual scale ×${sf} · disp scale = ${defSc.toExponential(2)} m/m`,14,cv.height-10);
 }
 
@@ -1135,24 +1214,24 @@ function drawReactions(){
     if(r.Rx!=null&&Math.abs(r.Rx)>1e-5){
       // Rx: horizontal reaction (positive = rightward)
       const dir=Math.sign(r.Rx);
-      drawArrow(pt.x-dir*Math.abs(r.Rx)*rsc,pt.y,pt.x,pt.y,'#00D080',2);
-      ctx.fillStyle='#00D080'; ctx.font='bold 10px "JetBrains Mono",monospace';
+      drawArrow(pt.x-dir*Math.abs(r.Rx)*rsc,pt.y,pt.x,pt.y, PM?'#007040':' #00D080',2);
+      ctx.fillStyle='#00D080'; ctx.font=`bold ${PF(10)}px "JetBrains Mono",monospace`;
       ctx.fillText(`${r.Rx.toFixed(2)}`,pt.x+dir*6,pt.y-5);
     }
     if(r.Ry!=null&&Math.abs(r.Ry)>1e-5){
       // Ry display: positive=downward (Y-down) so arrow points down in canvas for positive value
       const dir=Math.sign(r.Ry);
-      drawArrow(pt.x,pt.y-dir*Math.abs(r.Ry)*rsc,pt.x,pt.y,'#00D080',2);
-      ctx.fillStyle='#00D080'; ctx.font='bold 10px "JetBrains Mono",monospace';
+      drawArrow(pt.x,pt.y-dir*Math.abs(r.Ry)*rsc,pt.x,pt.y, PM?'#007040':'#00D080',2);
+      ctx.fillStyle='#00D080'; ctx.font=`bold ${PF(10)}px "JetBrains Mono",monospace`;
       ctx.fillText(`${r.Ry.toFixed(2)}`,pt.x+6,pt.y+dir*10);
     }
     if(r.Mz!=null&&Math.abs(r.Mz)>1e-5){
       drawMoment(pt.x,pt.y,mR*sc*.08,r.Mz>0,'#00D080');
-      ctx.fillStyle='#00D080'; ctx.font='bold 10px "JetBrains Mono",monospace';
+      ctx.fillStyle='#00D080'; ctx.font=`bold ${PF(10)}px "JetBrains Mono",monospace`;
       ctx.fillText(`${r.Mz.toFixed(2)}`,pt.x+mR*sc*.1,pt.y-8);
     }
   }
-  ctx.fillStyle='#00D080'; ctx.font='11px Barlow,sans-serif';
+  ctx.fillStyle='#00D080'; ctx.font=`${PF(11)}px Barlow,sans-serif`;
   ctx.fillText('Reactions [kN, kN·m] — arrows show direction of reaction on structure',14,cv.height-10);
 }
 
@@ -1175,7 +1254,7 @@ function drawDiagram(type){
   };
   for(const er of ER) maxV=Math.max(maxV,...getVals(er,type).map(Math.abs));
   if(maxV<1e-8){
-    ctx.fillStyle='#8090A0'; ctx.font='14px Barlow,sans-serif';
+    ctx.fillStyle='#8090A0'; ctx.font=`${PF(14)}px Barlow,sans-serif`;
     ctx.fillText('All values are zero.',20,60); return;
   }
 
@@ -1228,11 +1307,11 @@ function drawDiagram(type){
     for(const [x,y] of pTop) ctx.lineTo(x,y);
     for(let k=pBase.length-1;k>=0;k--) ctx.lineTo(pBase[k][0],pBase[k][1]);
     ctx.closePath();
-    ctx.fillStyle=col+'33'; ctx.fill();
+    ctx.fillStyle = PM ? col+'55' : col+'33'; ctx.fill();
 
     ctx.beginPath(); ctx.moveTo(pTop[0][0],pTop[0][1]);
     for(const [x,y] of pTop.slice(1)) ctx.lineTo(x,y);
-    ctx.strokeStyle=col; ctx.lineWidth=2; ctx.stroke();
+    ctx.strokeStyle = PM ? col : col; ctx.lineWidth = PM ? 2.5 : 2; ctx.stroke();
 
     // Dashed baseline connectors
     ctx.strokeStyle=col+'80'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
@@ -1241,7 +1320,7 @@ function drawDiagram(type){
     ctx.setLineDash([]);
 
     // Value labels
-    ctx.fillStyle=col; ctx.font='bold 9.5px "JetBrains Mono",monospace';
+    ctx.fillStyle = PM ? '#111' : col; ctx.font=`bold ${PF(10)}px "JetBrains Mono",monospace`;
     const fl=er.fl;
     const v0=type==='axial'?fl[0]:type==='shear'?fl[1]:fl[2];
     const vn=type==='axial'?-fl[3]:type==='shear'?-fl[4]:-fl[5];
@@ -1262,7 +1341,7 @@ function drawDiagram(type){
   }
 
   const unit={axial:'[kN]',shear:'[kN]',moment:'[kN·m]'};
-  ctx.fillStyle=col; ctx.font='11px Barlow,sans-serif';
+  ctx.fillStyle=col; ctx.font=`${PF(11)}px Barlow,sans-serif`;
   ctx.fillText(`Max: ${maxV.toFixed(3)} ${unit[type]}`,14,cv.height-10);
 }
 
@@ -1287,6 +1366,227 @@ function setView(v){
 function doUpdatePlot(){ setView('preview'); setst('Preview updated.'); }
 function doClear(){ ST.res=null; document.getElementById('rsp').classList.remove('on'); document.getElementById('mat-ov').style.display='none'; setView('preview'); setst('Preview cleared.'); }
 function doReset(){ ST.res=null; document.getElementById('rsp').classList.remove('on'); setView('preview'); setst('View reset.'); }
+
+function doPrint() {
+  // ── 1. Capture canvases at 2x resolution ──────────────────
+  const sv = ST.view;
+  const szsc=ZS.sc, szpx=ZS.px, szpy=ZS.py;
+  ZS.sc=1; ZS.px=0; ZS.py=0;
+  document.getElementById('mat-ov').style.display='none';
+  const cvEl = document.getElementById('cv');
+
+  const PRINT_W = 1400, PRINT_H = 750;
+  const origW = cvEl.width, origH = cvEl.height;
+  cvEl.width = PRINT_W; cvEl.height = PRINT_H;
+
+  const allViews = ST.res
+    ? ['preview','deformed','reactions','axial','shear','moment']
+    : ['preview'];
+  const vLabels = {
+    preview:'Structure Preview', deformed:'Deformed Shape',
+    reactions:'Reaction Forces', axial:'Axial Force Diagram (N)',
+    shear:'Shear Force Diagram (V)', moment:'Bending Moment Diagram (M)'
+  };
+  const caps = {};
+  PM = true;
+  for (const v of allViews) { ST.view=v; draw(); caps[v]=cvEl.toDataURL('image/png'); }
+  PM = false;
+
+  // Restore canvas
+  cvEl.width=origW; cvEl.height=origH;
+  ZS.sc=szsc; ZS.px=szpx; ZS.py=szpy;
+  setView(sv);
+
+  // ── 2. Helpers ────────────────────────────────────────────
+  const fN=(v,d=4)=>{
+    if(Math.abs(v)<1e-9)return'0';
+    const a=Math.abs(v);
+    return(a>=1e5||a<1e-2)?v.toExponential(3):v.toFixed(d);
+  };
+  const pTbl=(heads,rows)=>{
+    let s=`<table class="pt"><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>`;
+    rows.forEach(r=>{s+=`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`;});
+    return s+'</tbody></table>';
+  };
+  const mTbl=(M,rL,cL)=>{
+    let s=`<table class="mt"><thead><tr><th></th>${cL.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>`;
+    M.forEach((row,ri)=>{s+=`<tr><td class="lbl">${rL[ri]}</td>${row.map(v=>`<td>${fN(v)}</td>`).join('')}</tr>`;});
+    return s+'</tbody></table>';
+  };
+  const vTbl=(vec,rL,title)=>{
+    let s=`<table class="vt"><thead><tr><th>${title}</th><th>Value</th></tr></thead><tbody>`;
+    vec.forEach((val,i)=>s+=`<tr><td class="lbl">${rL[i]}</td><td>${fN(val)}</td></tr>`);
+    return s+'</tbody></table>';
+  };
+
+  // ── 3. Build body ─────────────────────────────────────────
+  const now=new Date();
+  const dtStr=now.toLocaleDateString('en-GB',{year:'numeric',month:'long',day:'numeric'})
+             +' &nbsp;&middot;&nbsp;'
+             +now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+
+  let body=`
+<div class="ph">
+  <div class="pr">Özgür Yurdakul &nbsp;|&nbsp; University of Pardubice<br>${dtStr}</div>
+  <h1>FrameAnalysisGUI &nbsp; v1.2</h1>
+  <p>2D Frame Analysis &nbsp;&middot;&nbsp; Direct Stiffness Method &nbsp;&middot;&nbsp; Linear-Elastic Static</p>
+  <p class="sub">Units: kN, m, kN&middot;m &nbsp;|&nbsp; Sign convention: Y-down positive, CW moment positive</p>
+</div>
+
+<div class="sec"><div class="sec-hdr">Input Data</div>
+<table class="layout"><tr>
+  <td><b>Nodes</b><br>${pTbl(['#','X [m]','Y [m]'],ST.nodes.map(n=>[n[0],n[1],n[2]]))}</td>
+  <td><b>Elements</b><br>${pTbl(['#','Node i','Node j','Prop ID','Release'],ST.elems.map(e=>[e[0],e[1],e[2],e[3],e[4]]))}</td>
+  <td><b>Materials</b><br>${pTbl(['#','A [m&sup2;]','I [m&sup4;]','E [kPa]'],ST.mats.map(m=>[m[0],fN(m[1]),fN(m[2]),fN(m[3])]))}</td>
+</tr></table>
+<table class="layout"><tr>
+  <td><b>Supports</b> <span class="note">(1=restrained)</span><br>${pTbl(['Node','Dx','Dy','Rz'],ST.sups.map(s=>s))}</td>
+  ${ST.nlds.length?`<td><b>Nodal Loads</b><br>${pTbl(['Node','Fx [kN]','Fy [kN]','Mz [kN&middot;m]'],ST.nlds.map(l=>l))}</td>`:'<td></td>'}
+  ${ST.mlds.length?`<td><b>Member Loads</b><br>${pTbl(['Elem ID','Type','Magnitude','a_param'],ST.mlds.map(l=>l))}</td>`:'<td></td>'}
+</tr></table>
+</div>
+
+<div class="sec"><div class="sec-hdr">Diagrams</div>
+<table class="img-grid"><tr>
+  ${allViews.slice(0,2).map(v=>`<td><div class="img-lbl">${vLabels[v]}</div><img src="${caps[v]}"></td>`).join('')}
+</tr><tr>
+  ${allViews.slice(2,4).map(v=>`<td><div class="img-lbl">${vLabels[v]}</div><img src="${caps[v]}"></td>`).join('')}
+</tr><tr>
+  ${allViews.slice(4,6).map(v=>`<td><div class="img-lbl">${vLabels[v]}</div><img src="${caps[v]}"></td>`).join('')}
+</tr></table>
+</div>`;
+
+  if(ST.res){
+    const {ND,ER,RXNtbl,ED,KG_struct,F_nodal,F_struct,NEq}=ST.res;
+    const dofL=Array.from({length:NEq},(_,i)=>`DOF${i+1}`);
+    const locL=['u_i','v_i','&theta;_i','u_j','v_j','&theta;_j'];
+
+    // Results – new page, stacked vertically
+    body+=`
+<div class="sec newpage"><div class="sec-hdr">Analysis Results</div>
+
+<p class="mhdr">Nodal Displacements</p>
+${pTbl(['Node','Dx [m]','Dy [m]','Rz [rad]'],ND.map((d,i)=>[i+1,fN(d[0]),fN(d[1]),fN(d[2])]))}
+
+<p class="mhdr">Member Local Forces</p>
+${pTbl(['Elem','Fx_i [kN]','Fy_i [kN]','Mz_i [kN&middot;m]','Fx_j [kN]','Fy_j [kN]','Mz_j [kN&middot;m]'],ER.map((er,i)=>[i+1,...er.fl.map(v=>fN(v))]))}
+
+${RXNtbl&&RXNtbl.length?`<p class="mhdr">Support Reactions</p>
+${pTbl(['Node','Rx [kN]','Ry [kN]','Mz [kN&middot;m]'],RXNtbl.map(r=>[r.node,r.Rx!=null?fN(r.Rx):'&mdash;',r.Ry!=null?fN(r.Ry):'&mdash;',r.Mz!=null?fN(r.Mz):'&mdash;']))}`:''}
+</div>`;
+
+    // Structural K + force vectors – new page
+    body+=`
+<div class="sec newpage"><div class="sec-hdr">Structural Stiffness Matrix &nbsp; K &nbsp; [${NEq}&times;${NEq}]</div>
+${mTbl(KG_struct,dofL,dofL)}
+</div>
+<div class="sec"><div class="sec-hdr">Force Vectors</div>
+<b>F_nodal [kN / kN&middot;m]</b><br>${vTbl(F_nodal,dofL,'DOF')}
+<br><b>F_struct [kN / kN&middot;m]</b><br>${vTbl(F_struct,dofL,'DOF')}
+</div>`;
+
+    // Per-element matrices – each on a new page, stacked vertically
+    ED.forEach((ed,i)=>{
+      const eid=ST.elems[i][0];
+      body+=`
+<div class="sec newpage"><div class="sec-hdr">Element ${eid} &nbsp;&mdash;&nbsp; Nodes ${ST.elems[i][1]}&rarr;${ST.elems[i][2]}, Release: ${ed.rel}, L=${ed.L.toFixed(4)} m</div>
+
+<p class="mhdr">Local Stiffness Matrix &nbsp; K<sub>L</sub> &nbsp; [6&times;6]</p>
+${mTbl(ed.KL,locL,locL)}
+
+<p class="mhdr">Transformation Matrix &nbsp; T &nbsp; [6&times;6]</p>
+${mTbl(ed.Tm,locL,locL)}
+
+<p class="mhdr">Element Global Stiffness Matrix &nbsp; K<sub>G</sub> &nbsp; [6&times;6]</p>
+${mTbl(ed.KGe,locL,locL)}
+
+<p class="mhdr">Fixed-End Force Vectors</p>
+<b style="font-size:7.5pt">f_em (local)</b><br>${vTbl(ed.fm_loc,locL,'DOF')}
+<br><b style="font-size:7.5pt">f_em (global)</b><br>${vTbl(ed.fm_glob,locL,'DOF')}
+
+</div>`;
+    });
+  }
+
+  // ── 4. CSS (all block/table, no flex) ─────────────────────
+  const css=`
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:Barlow,Arial,sans-serif;font-size:9.5pt;color:#111;background:#fff;padding:11mm 13mm;}
+/* Header */
+.ph{border-bottom:2.5pt solid #1565C0;padding-bottom:5pt;margin-bottom:12pt;overflow:hidden;}
+.ph h1{font-size:18pt;font-weight:700;color:#1565C0;letter-spacing:.03em;}
+.ph p{font-size:8.5pt;color:#444;margin-top:2pt;}
+.ph .sub{color:#777;font-size:7.5pt;}
+.ph .pr{float:right;text-align:right;font-size:8pt;color:#555;line-height:1.6;}
+.note{font-size:7.5pt;color:#666;font-weight:400;}
+/* Section */
+.sec{margin-bottom:10pt;}
+.sec-hdr{background:#1565C0;color:#fff;font-size:10pt;font-weight:700;
+  padding:3pt 8pt;margin-bottom:7pt;letter-spacing:.04em;}
+.newpage{page-break-before:always;}
+/* Layout table (side-by-side columns) */
+table.layout{border-collapse:collapse;width:100%;margin-bottom:6pt;}
+table.layout>tbody>tr>td{vertical-align:top;padding:0 7pt 6pt 0;width:33%;}
+table.layout>tbody>tr>td:last-child{padding-right:0;}
+/* Data tables */
+table.pt{border-collapse:collapse;font-size:7.5pt;font-family:'Courier New',monospace;
+  width:100%;margin-bottom:4pt;}
+table.pt b{font-family:Barlow,Arial,sans-serif;font-size:8.5pt;display:block;
+  color:#1565C0;margin-bottom:3pt;}
+table.pt th{background:#DDEEFF;color:#1565C0;border:.5pt solid #99BBDD;
+  padding:2.5pt 5pt;text-align:center;font-size:7pt;font-weight:700;}
+table.pt td{border:.5pt solid #C5D8EA;padding:2pt 5pt;text-align:right;font-size:7.5pt;}
+table.pt td:first-child{text-align:center;color:#555;background:#F4F8FF;}
+/* Image grid */
+table.img-grid{border-collapse:collapse;width:100%;margin-bottom:6pt;}
+table.img-grid td{width:50%;padding:4pt;border:.5pt solid #BBCCDD;vertical-align:top;}
+.img-lbl{background:#DDEEFF;color:#1565C0;font-size:7pt;font-weight:700;
+  padding:2pt 5pt;margin-bottom:0;letter-spacing:.05em;text-transform:uppercase;}
+table.img-grid img{width:100%;display:block;}
+/* Matrix tables */
+table.mt{border-collapse:collapse;font-size:6.5pt;font-family:'Courier New',monospace;
+  margin-bottom:6pt;page-break-inside:avoid;}
+table.mt th{background:#DDEEFF;color:#1565C0;border:.5pt solid #99BBDD;
+  padding:2pt 4pt;text-align:center;font-size:6pt;font-weight:700;}
+table.mt td{border:.5pt solid #C5D8EA;padding:1.5pt 4pt;text-align:right;}
+table.mt td.lbl{color:#1565C0;text-align:center;background:#F0F6FF;font-size:6pt;}
+p.mhdr{font-size:8.5pt;font-weight:700;color:#1565C0;margin:10pt 0 3pt;
+  border-left:2pt solid #1565C0;padding-left:5pt;}
+/* Vector tables */
+table.vt{border-collapse:collapse;font-size:6.5pt;font-family:'Courier New',monospace;
+  margin-bottom:4pt;page-break-inside:avoid;vertical-align:top;}
+table.vt th{background:#DDEEFF;color:#1565C0;border:.5pt solid #99BBDD;
+  padding:2pt 6pt;font-size:6pt;font-weight:700;}
+table.vt td{border:.5pt solid #C5D8EA;padding:1.5pt 6pt;text-align:right;}
+table.vt td.lbl{text-align:left;color:#1565C0;background:#F0F6FF;font-size:6pt;}
+@media print{
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .newpage{page-break-before:always;}
+  table{page-break-inside:auto;}
+  tr{page-break-inside:avoid;}
+}`;
+
+  const fullDoc=`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FrameAnalysisGUI — Print Report</title>
+<style>${css}</style>
+</head>
+<body>${body}
+<script>window.onload=function(){window.print();};<\/script>
+</body>
+</html>`;
+
+  // ── 5. Open print window ──────────────────────────────────
+  const pw=window.open('','_blank','width=960,height=800,scrollbars=yes');
+  if(!pw){setst('Pop-up blocked — allow pop-ups and try again.');return;}
+  pw.document.open();
+  pw.document.write(fullDoc);
+  pw.document.close();
+  setst('Print window opened — dialogue will appear automatically.');
+}
+
 
 function doSave(){
   const d={nodes:ST.nodes,elems:ST.elems,mats:ST.mats,sups:ST.sups,nlds:ST.nlds,mlds:ST.mlds};
