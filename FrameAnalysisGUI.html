@@ -1290,7 +1290,7 @@ function drawDiagram(type){
         val=er.fl[2]+er.fl[1]*xL;
         if(ml){
           if(ml[1]===3){ const q=ml[2],av=ml[3]===0?L:ml[3]; val+=xL<=av?0.5*q*xL**2:0.5*q*av**2+(q*av)*(xL-av); }
-          else if(ml[1]===1){ const Fz=ml[2],a=ml[3]; if(xL>a) val+=(er.fl[1]+Fz)*(xL-a); }
+          else if(ml[1]===1){ const Fz=ml[2],a=ml[3]; if(xL>a) val+=Fz*(xL-a); }
           else if(ml[1]===2){ const Mm=ml[2],a=ml[3]; if(xL>a) val+=Mm; }
         }
         // MATLAB: offset = +Mz * scale * perp
