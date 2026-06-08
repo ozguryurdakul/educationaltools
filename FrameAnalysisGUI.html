@@ -1128,9 +1128,21 @@ function drawDeformed(){
     const ed=ED[i], er=ER[i];
     const {xs,ys,xe,ye,L,cosE,sinE,rel,ml,Emod,Ix}=ed;
     const dl=er.dl; // local displacements [u1,v1,th1,u2,v2,th2]
-    const u1=dl[0], u2=dl[3], th1=dl[2], th2=dl[5];
+    const u1=dl[0], u2=dl[3];
     // MATLAB convention: v1n = -dl[1], v2n = -dl[4]
     const v1n=-dl[1], v2n=-dl[4];
+
+    // For hinged ends the physical beam slope ≠ global node rotation.
+    // Derive the physical slope at each hinge end from the M=0 condition
+    // (cubic beam equation with zero-moment BC):
+    //   release=1 (hinge at j): θ_j = (3·(v2n−v1n)/L − θ_i) / 2
+    //   release=2 (hinge at i): θ_i = (3·(v2n−v1n)/L − θ_j) / 2
+    //   release=3 (both hinged): straight transverse line → θ = (v2n−v1n)/L
+    let th1=dl[2], th2=dl[5];
+    const dv=(v2n-v1n)/L; // chord slope
+    if      (rel===1) { th2=(3*dv-th1)/2; }
+    else if (rel===2) { th1=(3*dv-th2)/2; }
+    else if (rel===3) { th1=th2=dv; }
 
     const nPts=50;
     ctx.beginPath();
