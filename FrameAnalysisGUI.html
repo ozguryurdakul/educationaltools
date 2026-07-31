@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FrameAnalysisGUI v1.2</title>
+<title>FrameAnalysisGUI v2.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -82,10 +82,39 @@ body { font-family: var(--sans); background: var(--navy); color: var(--txt); dis
 
 /* ── Data tables ── */
 .twrap { flex: 1; overflow: auto; border: 1px solid var(--bdr); border-radius: 4px; }
-.dt { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11.5px; }
+.dt { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11.5px;
+      table-layout: fixed; }
+
+/* ── Per-table column proportions (table-layout:fixed reads the header row) ── */
+.dt th.ckh{width:7%;}
+#t-nodes th:nth-child(2){width:9%;}  #t-nodes th:nth-child(3),
+#t-nodes th:nth-child(4){width:42%;}
+
+#t-elems th:nth-child(2){width:7%;}  #t-elems th:nth-child(3),
+#t-elems th:nth-child(4){width:15%;} #t-elems th:nth-child(5){width:16%;}
+#t-elems th:nth-child(6){width:40%;}
+
+#t-mats  th:nth-child(2){width:8%;}  #t-mats  th:nth-child(3){width:28%;}
+#t-mats  th:nth-child(4){width:29%;} #t-mats  th:nth-child(5){width:28%;}
+
+#t-sups  th:nth-child(2){width:15%;} #t-sups  th:nth-child(3),
+#t-sups  th:nth-child(4),
+#t-sups  th:nth-child(5){width:26%;}
+
+#t-nlds  th:nth-child(2){width:15%;} #t-nlds  th:nth-child(3),
+#t-nlds  th:nth-child(4),
+#t-nlds  th:nth-child(5){width:26%;}
+
+#t-mlds  th:nth-child(2){width:16%;} #t-mlds  th:nth-child(3){width:29%;}
+#t-mlds  th:nth-child(4){width:24%;} #t-mlds  th:nth-child(5){width:24%;}
+
+.dt td.ck{text-align:center;background:var(--surf2);padding:2px 0;}
+.dt td.ck input{width:13px;height:13px;margin:0;cursor:pointer;accent-color:var(--blue);}
+.dt tr.selrow td{background:#DCEBFF!important;}
+.dt tr.selrow td.ck{background:#C4DDFF!important;}
 .dt th {
   background: var(--panel2); color: #5878A8; font-family: var(--cond); font-size: 10px;
-  font-weight: 700; letter-spacing: .07em; padding: 5px 6px; border: 1px solid var(--bdr2);
+  font-weight: 700; letter-spacing: .05em; padding: 5px 3px; border: 1px solid var(--bdr2);
   text-align: center; position: sticky; top: 0; z-index: 1; white-space: nowrap;
 }
 .dt td { border: 1px solid #E0E8F4; padding: 0; }
@@ -98,6 +127,19 @@ body { font-family: var(--sans); background: var(--navy); color: var(--txt); dis
 .dt input[type=number]::-webkit-inner-spin-button,
 .dt input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
 .dt input[type=number]:focus { background: #EBF5FF; }
+.dt select {
+  width: 100%; border: none; background: transparent; font-family: var(--sans);
+  font-size: 11px; color: var(--txt); padding: 3px 11px 3px 3px; outline: none;
+  cursor: pointer; appearance: none; text-align: center; text-align-last: center;
+  text-overflow: ellipsis;
+}
+.dt select:focus { background: #EBF5FF; }
+.dt select:hover { background: #F0F7FF; }
+.dt td.sel { position: relative; }
+.dt td.sel::after {
+  content: '\25BE'; position: absolute; right: 3px; top: 50%;
+  transform: translateY(-50%); font-size: 8px; color: #8FA6C0; pointer-events: none;
+}
 .dt tr:hover td:not(.xi) { background: #F5F9FF; }
 .tbtns { display: flex; gap: 5px; flex-shrink: 0; }
 .tbtn {
@@ -242,7 +284,7 @@ canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
   <div class="hdr-sub">2D Frame Analysis &nbsp;·&nbsp; Direct Stiffness Method &nbsp;·&nbsp; Linear-Elastic Static</div>
   <div class="hdr-auth">
     Özgür Yurdakul &nbsp;|&nbsp; Faculty of Transport Engineering, University of Pardubice<br>
-    v1.2 (May 2026) &nbsp;·&nbsp; Units: kN, m, kN·m &nbsp;·&nbsp; CC BY-NC-SA 4.0<br>
+    v2.1 (July 2026) &nbsp;·&nbsp; Units: kN, m, kN·m &nbsp;·&nbsp; CC BY-NC-SA 4.0<br>
     <span class="cite-line">Yurdakul, Ö. (2026). <em>FrameAnalysisGUI</em>: A web-based 2D frame analysis tool (DSM). Univ. of Pardubice.
     Available at: <a href="https://ozguryurdakul.github.io/educationaltools/FrameAnalysisGUI.html" target="_blank">ozguryurdakul.github.io/educationaltools</a></span>
   </div>
@@ -281,72 +323,72 @@ canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
     <div class="tpnl on" id="tp-nodes">
       <div class="ptit">Node Coordinates</div>
-      <div class="phnt">Sign convention: Y-axis downward positive · Clockwise moment positive</div>
+      <div class="phnt">Sign convention: u→ right · v↓ downward positive · θ counter-clockwise positive</div>
       <div class="twrap"><table class="dt" id="t-nodes">
-        <thead><tr><th>#</th><th>X [m]</th><th>Y [m]</th></tr></thead><tbody></tbody>
+        <thead><tr><th class="ckh">✓</th><th>#</th><th>X [m]</th><th>Y [m]</th></tr></thead><tbody></tbody>
       </table></div>
       <div class="tbtns">
         <button class="tbtn add" onclick="addRow('nodes')">+ Add Node</button>
-        <button class="tbtn rem" onclick="remRow('nodes')">− Remove Last</button>
+        <button class="tbtn rem" onclick="remSel('nodes')">− Remove Selected</button>
       </div>
     </div>
 
     <div class="tpnl" id="tp-elems">
       <div class="ptit">Connectivity &amp; End Releases</div>
-      <div class="phnt">Release: 0 Fixed-Fixed · 1 Hinge at j · 2 Hinge at i · 3 Both Hinged</div>
+      <div class="phnt">Choose the end-release condition from the Release column.</div>
       <div class="twrap"><table class="dt" id="t-elems">
-        <thead><tr><th>#</th><th>Node i</th><th>Node j</th><th>Prop ID</th><th>Release</th></tr></thead><tbody></tbody>
+        <thead><tr><th class="ckh">✓</th><th>#</th><th>Node i</th><th>Node j</th><th>Prop ID</th><th>Release</th></tr></thead><tbody></tbody>
       </table></div>
       <div class="tbtns">
         <button class="tbtn add" onclick="addRow('elems')">+ Add Element</button>
-        <button class="tbtn rem" onclick="remRow('elems')">− Remove Last</button>
+        <button class="tbtn rem" onclick="remSel('elems')">− Remove Selected</button>
       </div>
     </div>
 
     <div class="tpnl" id="tp-mats">
       <div class="ptit">Material / Section Properties</div>
       <div class="twrap"><table class="dt" id="t-mats">
-        <thead><tr><th>#</th><th>Area [m²]</th><th>Inertia [m⁴]</th><th>E [kPa]</th></tr></thead><tbody></tbody>
+        <thead><tr><th class="ckh">✓</th><th>#</th><th>Area [m²]</th><th>Inertia [m⁴]</th><th>E [kPa]</th></tr></thead><tbody></tbody>
       </table></div>
       <div class="tbtns">
         <button class="tbtn add" onclick="addRow('mats')">+ Add Property</button>
-        <button class="tbtn rem" onclick="remRow('mats')">− Remove Last</button>
+        <button class="tbtn rem" onclick="remSel('mats')">− Remove Selected</button>
       </div>
     </div>
 
     <div class="tpnl" id="tp-sups">
-      <div class="ptit">Supports &nbsp;<small style="font-weight:400;font-size:12px">(1 = Restrained, 0 = Free)</small></div>
+      <div class="ptit">Supports &nbsp;<small style="font-weight:400;font-size:12px">(select Fixed or Free per DOF)</small></div>
       <div class="twrap"><table class="dt" id="t-sups">
-        <thead><tr><th>Node</th><th>Dx</th><th>Dy</th><th>Rz</th></tr></thead><tbody></tbody>
+        <thead><tr><th class="ckh">✓</th><th>Node</th><th>Dx</th><th>Dy</th><th>Rz</th></tr></thead><tbody></tbody>
       </table></div>
       <div class="tbtns">
         <button class="tbtn add" onclick="addRow('sups')">+ Add Support</button>
-        <button class="tbtn rem" onclick="remRow('sups')">− Remove Last</button>
+        <button class="tbtn rem" onclick="remSel('sups')">− Remove Selected</button>
       </div>
     </div>
 
     <div class="tpnl" id="tp-nlds">
       <div class="ptit">Nodal Loads</div>
-      <div class="phnt">Fx [kN] · Fy [kN] · Mz [kN·m] &nbsp;|&nbsp; Downward Fy = Positive · Clockwise Mz = Positive</div>
+      <div class="phnt">Fx [kN] · Fy [kN] · Mz [kN·m] &nbsp;|&nbsp; Downward Fy = Positive · Counter-clockwise Mz = Positive</div>
       <div class="twrap"><table class="dt" id="t-nlds">
-        <thead><tr><th>Node</th><th>Fx [kN]</th><th>Fy [kN]</th><th>Mz [kN·m]</th></tr></thead><tbody></tbody>
+        <thead><tr><th class="ckh">✓</th><th>Node</th><th>Fx [kN]</th><th>Fy [kN]</th><th>Mz [kN·m]</th></tr></thead><tbody></tbody>
       </table></div>
       <div class="tbtns">
         <button class="tbtn add" onclick="addRow('nlds')">+ Add Load</button>
-        <button class="tbtn rem" onclick="remRow('nlds')">− Remove Last</button>
+        <button class="tbtn rem" onclick="remSel('nlds')">− Remove Selected</button>
       </div>
     </div>
 
     <div class="tpnl" id="tp-mlds">
       <div class="ptit">Member Loads</div>
-      <div class="phnt">Type 1 = Point Force · Type 2 = Point Moment · Type 3 = UDL<br>
+      <div class="phnt">Select the load Type from the dropdown.<br>
         a_param: dist from node i [m] (0 = full span for UDL)</div>
       <div class="twrap"><table class="dt" id="t-mlds">
-        <thead><tr><th>Elem ID</th><th>Type (1/2/3)</th><th>Magnitude</th><th>a_param [m]</th></tr></thead><tbody></tbody>
+        <thead><tr><th class="ckh">✓</th><th>Elem ID</th><th>Type</th><th>Magnitude</th><th>a_param [m]</th></tr></thead><tbody></tbody>
       </table></div>
       <div class="tbtns">
         <button class="tbtn add" onclick="addRow('mlds')">+ Add Member Load</button>
-        <button class="tbtn rem" onclick="remRow('mlds')">− Remove Last</button>
+        <button class="tbtn rem" onclick="remSel('mlds')">− Remove Selected</button>
         <button class="tbtn clr" onclick="clrTbl('mlds')">Clear All</button>
       </div>
     </div>
@@ -384,7 +426,7 @@ canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
         <tbody id="rb-frc"></tbody>
       </table>
       <table style="margin-top:3px" id="rt-rxn" style="display:none">
-        <caption>SUPPORT REACTIONS &nbsp;(Rx: rightward+, Ry: downward+, Mz: CW+)</caption>
+        <caption>SUPPORT REACTIONS &nbsp;(Rx: rightward+, Ry: upward+, Mz: counter-clockwise+)</caption>
         <thead><tr><th>Node</th><th>Rx [kN]</th><th>Ry [kN]</th><th>Mz [kN·m]</th></tr></thead>
         <tbody id="rb-rxn"></tbody>
       </table>
@@ -407,13 +449,22 @@ const ST = {
   res: null,
   view: 'preview'
 };
+// Dropdown option sets (value → label). Shared by tables and print report.
+const OPT_REL  = [[0,'Fixed\u2013Fixed'],[1,'Hinge at j'],[2,'Hinge at i'],[3,'Both hinged']];
+const OPT_FIX  = [[1,'Fixed'],[0,'Free']];
+const OPT_MTYP = [[1,'Point Force'],[2,'Point Moment'],[3,'UDL']];
+const labelOf = (opts,v) => { const o=opts.find(o=>o[0]==v); return o?o[1]:v; };
+
+const SEL = { nodes:new Set(), elems:new Set(), mats:new Set(),
+              sups:new Set(),  nlds:new Set(), mlds:new Set() };
+
 const TDEFS = {
   nodes:{ auto:true,  def:()=>[0,0] },
-  elems:{ auto:true,  def:()=>[1,2,1,0] },
+  elems:{ auto:true,  def:()=>[1,2,1,0], sel:{4:OPT_REL} },
   mats: { auto:true,  def:()=>[0,0,0] },
-  sups: { auto:false, def:()=>[1,1,1,0] },
+  sups: { auto:false, def:()=>[1,1,1,0], sel:{1:OPT_FIX,2:OPT_FIX,3:OPT_FIX} },
   nlds: { auto:false, def:()=>[1,0,0,0] },
-  mlds: { auto:false, def:()=>[1,3,0,0] },
+  mlds: { auto:false, def:()=>[1,3,0,0], sel:{1:OPT_MTYP} },
 };
 
 // ============================================================
@@ -421,21 +472,48 @@ const TDEFS = {
 // ============================================================
 function renderTbl(nm) {
   const data = ST[nm];
-  const { auto } = TDEFS[nm];
+  const { auto, sel } = TDEFS[nm];
   const tbody = document.querySelector(`#t-${nm} tbody`);
   tbody.innerHTML = '';
   data.forEach((row, ri) => {
     const tr = document.createElement('tr');
+    if (SEL[nm].has(ri)) tr.className = 'selrow';
+    const tdc = document.createElement('td'); tdc.className = 'ck';
+    const cb = document.createElement('input'); cb.type = 'checkbox';
+    cb.checked = SEL[nm].has(ri);
+    cb.addEventListener('change', () => {
+      cb.checked ? SEL[nm].add(ri) : SEL[nm].delete(ri);
+      tr.className = cb.checked ? 'selrow' : '';
+    });
+    tdc.appendChild(cb); tr.appendChild(tdc);
     if (auto) {
       const td = document.createElement('td'); td.className = 'xi'; td.textContent = row[0]; tr.appendChild(td);
     }
     const vals = auto ? row.slice(1) : row;
     vals.forEach((val, fi) => {
-      const td = document.createElement('td');
-      const inp = document.createElement('input'); inp.type = 'number'; inp.step = 'any'; inp.value = val;
       const ci = fi + (auto ? 1 : 0);
-      inp.addEventListener('change', () => { ST[nm][ri][ci] = parseFloat(inp.value) || 0; });
-      td.appendChild(inp); tr.appendChild(td);
+      const td = document.createElement('td');
+      const opts = sel && sel[ci];
+      if (opts) {                                   // ── dropdown cell ──
+        td.className = 'sel';
+        const s = document.createElement('select');
+        opts.forEach(([v, txt]) => {
+          const o = document.createElement('option');
+          o.value = v; o.textContent = txt;
+          if (String(v) === String(val)) o.selected = true;
+          s.appendChild(o);
+        });
+        s.addEventListener('change', () => {
+          ST[nm][ri][ci] = parseInt(s.value, 10);   // redraw only on Update Plot
+        });
+        td.appendChild(s);
+      } else {                                      // ── numeric cell ──
+        const inp = document.createElement('input');
+        inp.type = 'number'; inp.step = 'any'; inp.value = val;
+        inp.addEventListener('change', () => { ST[nm][ri][ci] = parseFloat(inp.value) || 0; });
+        td.appendChild(inp);
+      }
+      tr.appendChild(td);
     });
     tbody.appendChild(tr);
   });
@@ -443,13 +521,79 @@ function renderTbl(nm) {
 function addRow(nm) {
   const { auto, def } = TDEFS[nm];
   const d = def();
-  if (auto) ST[nm].push([ST[nm].length + 1, ...d]);
-  else ST[nm].push(d);
-  renderTbl(nm);
+  if (auto) {
+    const nextId = ST[nm].length ? Math.max(...ST[nm].map(r => r[0])) + 1 : 1;
+    ST[nm].push([nextId, ...d]);
+  } else ST[nm].push(d);
+  SEL[nm].clear(); renderTbl(nm);
 }
-function remRow(nm) { if (ST[nm].length > 0) { ST[nm].pop(); renderTbl(nm); } }
-function clrTbl(nm) { ST[nm] = []; renderTbl(nm); }
-function initTbls() { Object.keys(TDEFS).forEach(nm => renderTbl(nm)); }
+function clrTbl(nm) { ST[nm] = []; SEL[nm].clear(); renderTbl(nm); invalidate(); }
+
+// results become meaningless once the model changes
+function invalidate(){
+  if (!ST.res) return;
+  ST.res = null;
+  document.getElementById('rsp').classList.remove('on');
+  document.getElementById('mat-ov').style.display = 'none';
+  if (ST.view !== 'preview') setView('preview'); else draw();
+}
+
+// Renumber elements 1..N and remap member-load references
+function reindexElems(){
+  const map = new Map(); ST.elems.forEach((e,i) => map.set(e[0], i+1));
+  ST.mlds = ST.mlds.filter(m => map.has(m[0]));
+  ST.mlds.forEach(m => m[0] = map.get(m[0]));
+  ST.elems.forEach((e,i) => e[0] = i+1);
+}
+
+// Delete the ticked rows, cascading references so the model stays valid
+function remSel(nm){
+  const sel = SEL[nm];
+  if (!sel.size) { setst('Tick one or more rows in the \u2713 column first.'); return; }
+  const gone = [...sel].sort((a,b)=>a-b);
+  const survives = arr => arr.filter((_,i) => !sel.has(i));
+  let note = `Removed ${gone.length} row(s) from ${nm}.`;
+
+  if (nm === 'nodes') {
+    const dead = new Set(gone.map(i => ST.nodes[i][0]));
+    const nEl = ST.elems.length, nSp = ST.sups.length, nLd = ST.nlds.length;
+    ST.elems = ST.elems.filter(e => !dead.has(e[1]) && !dead.has(e[2]));
+    ST.sups  = ST.sups.filter(s => !dead.has(s[0]));
+    ST.nlds  = ST.nlds.filter(l => !dead.has(l[0]));
+    const keep = survives(ST.nodes);
+    const map = new Map(); keep.forEach((r,i) => map.set(r[0], i+1));
+    ST.elems.forEach(e => { e[1] = map.get(e[1]); e[2] = map.get(e[2]); });
+    ST.sups.forEach(s => s[0] = map.get(s[0]));
+    ST.nlds.forEach(l => l[0] = map.get(l[0]));
+    keep.forEach((r,i) => r[0] = i+1);
+    ST.nodes = keep;
+    const nMl = ST.mlds.length; reindexElems();
+    const cas = [];
+    if (nEl !== ST.elems.length) cas.push(`${nEl-ST.elems.length} element(s)`);
+    if (nSp !== ST.sups.length)  cas.push(`${nSp-ST.sups.length} support(s)`);
+    if (nLd !== ST.nlds.length)  cas.push(`${nLd-ST.nlds.length} nodal load(s)`);
+    if (nMl !== ST.mlds.length)  cas.push(`${nMl-ST.mlds.length} member load(s)`);
+    if (cas.length) note += ' Also removed ' + cas.join(', ') + '.';
+    ['elems','sups','nlds','mlds'].forEach(t => { SEL[t].clear(); renderTbl(t); });
+  }
+  else if (nm === 'elems') {
+    const nMl = ST.mlds.length;
+    ST.elems = survives(ST.elems); reindexElems();
+    if (nMl !== ST.mlds.length) note += ` Also removed ${nMl-ST.mlds.length} member load(s).`;
+    SEL.mlds.clear(); renderTbl('mlds');
+  }
+  else if (nm === 'mats') {
+    const dead = new Set(gone.map(i => ST.mats[i][0]));
+    ST.mats = survives(ST.mats);                    // IDs kept (looked up by value)
+    const orphan = ST.elems.filter(e => dead.has(e[3])).length;
+    if (orphan) note += ` \u26a0 ${orphan} element(s) now reference a missing Prop ID.`;
+  }
+  else ST[nm] = survives(ST[nm]);
+
+  sel.clear(); renderTbl(nm); invalidate(); setst(note);
+}
+function initTbls() { Object.values(SEL).forEach(s => s.clear());
+                      Object.keys(TDEFS).forEach(nm => renderTbl(nm)); }
 
 // Tab switching
 document.querySelectorAll('.ttab').forEach(b => b.addEventListener('click', () => {
@@ -721,7 +865,8 @@ function doAnalyze() {
     // Build reaction table for supported nodes
     const RXNtbl=[];
     for(const s of sups){const ni=s[0]-1;if(ni<0||ni>=N)continue;
-      // Rx: raw; Ry: negated for display (Y-down → Y-up); Mz: raw
+      // Display frame: Rx rightward+, Ry upward+, Mz counter-clockwise+
+      // (element DOFs: u→ right, v↓ down, θ CCW — deliberately not right-handed)
       RXNtbl.push({node:s[0],
         Rx: Emap[ni][0]===0 ? Rxns[3*ni]   : null,
         Ry: Emap[ni][1]===0 ? -Rxns[3*ni+1]: null,
@@ -967,20 +1112,24 @@ function drawArrow(x1,y1,x2,y2,color,lw=2){
   ctx.closePath(); ctx.fill();
 }
 
-function drawMoment(x,y,r,cw,color){
+function drawMoment(x,y,r,ccw,color){
+  // Semicircular moment symbol drawn OVER the top of the node.
+  // Canvas y points down, so increasing angle appears clockwise on screen.
+  //   clockwise  : sweep a0 -> a1 (increasing), head at a1 (right side)
+  //   counter-cw : sweep a1 -> a0 (decreasing), head at a0 (left side)
+  const a0=Math.PI*0.85, a1=Math.PI*2.15;
   ctx.strokeStyle=color; ctx.lineWidth=2;
-  ctx.beginPath();
-  if(cw) ctx.arc(x,y,r,Math.PI*.9,Math.PI*.1); // CW arc
-  else   ctx.arc(x,y,r,Math.PI*.1,Math.PI*.9,true);
-  ctx.stroke();
-  // Arrowhead
-  const ang=cw?Math.PI*.1:Math.PI*.9;
-  const tx=x+r*Math.cos(ang), ty=y+r*Math.sin(ang);
-  const da=cw?.3:-.3;
+  ctx.beginPath(); ctx.arc(x,y,r,a0,a1,false); ctx.stroke();
+  // arrowhead, aligned with the direction of travel at the head end
+  const aH  = ccw ? a0 : a1;
+  const hx  = x + r*Math.cos(aH), hy = y + r*Math.sin(aH);
+  const tx  = ccw ?  Math.sin(aH) : -Math.sin(aH);   // unit tangent of travel
+  const ty  = ccw ? -Math.cos(aH) :  Math.cos(aH);
+  const ang = Math.atan2(ty,tx), hs = 9;
   ctx.fillStyle=color; ctx.beginPath();
-  ctx.moveTo(tx,ty);
-  ctx.lineTo(tx-8*Math.cos(ang+da),ty-8*Math.sin(ang+da));
-  ctx.lineTo(tx-8*Math.cos(ang-da),ty-8*Math.sin(ang-da));
+  ctx.moveTo(hx,hy);
+  ctx.lineTo(hx-hs*Math.cos(ang-0.42), hy-hs*Math.sin(ang-0.42));
+  ctx.lineTo(hx-hs*Math.cos(ang+0.42), hy-hs*Math.sin(ang+0.42));
   ctx.closePath(); ctx.fill();
 }
 
@@ -1043,7 +1192,7 @@ function drawNodalLoads(tf){
     }
     // Mz: moment arc (CW positive in MATLAB convention)
     if(Math.abs(Mz)>1e-6){
-      drawMoment(pt.x,pt.y,mR*sc*.07,Mz>0,'#FF80FF');
+      drawMoment(pt.x,pt.y,mR*sc*.07,Mz>0,'#FF80FF');   // +Mz = CCW
       ctx.fillStyle='#FF80FF'; ctx.font=`${PF(10)}px Barlow,sans-serif`;
       ctx.fillText(`M=${Mz}kN·m`,pt.x+mR*sc*.09,pt.y-mR*sc*.04);
     }
@@ -1075,7 +1224,7 @@ function drawMemberLoads(tf){
     } else if(type===2){
       // Concentrated moment at ap
       const t=ap/Lw, lx=p1.x+t*dx, ly=p1.y+t*dy;
-      drawMoment(lx,ly,al*.55,mag>0,'#FF5050');
+      drawMoment(lx,ly,al*.55,mag>0,'#FF5050');   // +M = CCW
       ctx.fillStyle='#FF5050'; ctx.font=`${PF(10)}px Barlow,sans-serif`;
       ctx.fillText(`M=${mag}`,lx+px2*al,ly+py2*al);
     } else if(type===3){
@@ -1238,7 +1387,7 @@ function drawReactions(){
       ctx.fillText(`${r.Ry.toFixed(2)}`,pt.x+6,pt.y+dir*10);
     }
     if(r.Mz!=null&&Math.abs(r.Mz)>1e-5){
-      drawMoment(pt.x,pt.y,mR*sc*.08,r.Mz>0,'#00D080');
+      drawMoment(pt.x,pt.y,mR*sc*.08,r.Mz>0,'#00D080');   // +Mz = CCW
       ctx.fillStyle='#00D080'; ctx.font=`bold ${PF(10)}px "JetBrains Mono",monospace`;
       ctx.fillText(`${r.Mz.toFixed(2)}`,pt.x+mR*sc*.1,pt.y-8);
     }
@@ -1440,7 +1589,7 @@ function doPrint() {
   let body=`
 <div class="ph">
   <div class="pr">Özgür Yurdakul &nbsp;|&nbsp; University of Pardubice<br>${dtStr}</div>
-  <h1>FrameAnalysisGUI &nbsp; v1.2</h1>
+  <h1>FrameAnalysisGUI &nbsp; v2.1</h1>
   <p>2D Frame Analysis &nbsp;&middot;&nbsp; Direct Stiffness Method &nbsp;&middot;&nbsp; Linear-Elastic Static</p>
   <p class="sub">Units: kN, m, kN&middot;m &nbsp;|&nbsp; Sign convention: Y-down positive, CW moment positive</p>
 </div>
@@ -1448,13 +1597,13 @@ function doPrint() {
 <div class="sec"><div class="sec-hdr">Input Data</div>
 <table class="layout"><tr>
   <td><b>Nodes</b><br>${pTbl(['#','X [m]','Y [m]'],ST.nodes.map(n=>[n[0],n[1],n[2]]))}</td>
-  <td><b>Elements</b><br>${pTbl(['#','Node i','Node j','Prop ID','Release'],ST.elems.map(e=>[e[0],e[1],e[2],e[3],e[4]]))}</td>
+  <td><b>Elements</b><br>${pTbl(['#','Node i','Node j','Prop ID','Release'],ST.elems.map(e=>[e[0],e[1],e[2],e[3],labelOf(OPT_REL,e[4])]))}</td>
   <td><b>Materials</b><br>${pTbl(['#','A [m&sup2;]','I [m&sup4;]','E [kPa]'],ST.mats.map(m=>[m[0],fN(m[1]),fN(m[2]),fN(m[3])]))}</td>
 </tr></table>
 <table class="layout"><tr>
-  <td><b>Supports</b> <span class="note">(1=restrained)</span><br>${pTbl(['Node','Dx','Dy','Rz'],ST.sups.map(s=>s))}</td>
+  <td><b>Supports</b><br>${pTbl(['Node','Dx','Dy','Rz'],ST.sups.map(s=>[s[0],labelOf(OPT_FIX,s[1]),labelOf(OPT_FIX,s[2]),labelOf(OPT_FIX,s[3])]))}</td>
   ${ST.nlds.length?`<td><b>Nodal Loads</b><br>${pTbl(['Node','Fx [kN]','Fy [kN]','Mz [kN&middot;m]'],ST.nlds.map(l=>l))}</td>`:'<td></td>'}
-  ${ST.mlds.length?`<td><b>Member Loads</b><br>${pTbl(['Elem ID','Type','Magnitude','a_param'],ST.mlds.map(l=>l))}</td>`:'<td></td>'}
+  ${ST.mlds.length?`<td><b>Member Loads</b><br>${pTbl(['Elem ID','Type','Magnitude','a_param'],ST.mlds.map(l=>[l[0],labelOf(OPT_MTYP,l[1]),l[2],l[3]]))}</td>`:'<td></td>'}
 </tr></table>
 </div>
 
