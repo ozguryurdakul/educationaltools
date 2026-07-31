@@ -625,21 +625,33 @@ function MM(A, B) {
 const MV = (A, v) => A.map(r => r.reduce((s,a,j) => s+a*v[j], 0));
 const VA = (a, b) => a.map((v, i) => v+b[i]);
 
+// Gauss–Jordan with partial pivoting.
+// The pivot test is RELATIVE to the magnitude of K: an absolute threshold is
+// meaningless because stiffness terms routinely run to 1e5 and above, so a
+// pivot that has collapsed to ~1e-11 is numerically zero yet would pass a
+// fixed 1e-16 test. Columns whose pivot collapses indicate a rank-deficient
+// system, i.e. a mechanism, and are reported rather than silently divided.
 function solveGE(Kin, Fin) {
   const n = Fin.length;
   const A = Kin.map((r, i) => [...r, Fin[i]]);
+  let scale = 0;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++)
+    scale = Math.max(scale, Math.abs(Kin[i][j]));
+  const tol = Math.max(scale, 1) * 1e-12;
+  const singular = [];
   for (let col = 0; col < n; col++) {
     let mx = col;
     for (let r = col+1; r < n; r++) if (Math.abs(A[r][col]) > Math.abs(A[mx][col])) mx = r;
     [A[col], A[mx]] = [A[mx], A[col]];
-    if (Math.abs(A[col][col]) < 1e-16) continue;
+    if (Math.abs(A[col][col]) < tol) { singular.push(col + 1); continue; }
     for (let r = 0; r < n; r++) {
       if (r === col) continue;
       const f = A[r][col] / A[col][col];
       for (let j = col; j <= n; j++) A[r][j] -= f * A[col][j];
     }
   }
-  return A.map((row, i) => Math.abs(row[i]) < 1e-16 ? 0 : row[n] / row[i]);
+  const D = A.map((row, i) => Math.abs(row[i]) < tol ? 0 : row[n] / row[i]);
+  return { D, singular };
 }
 
 // ============================================================
@@ -739,12 +751,26 @@ function buildFEM(type, mag, ap, L, rel) {
   return f;
 }
 
+// Abort an analysis: drop stale results, blank the tables, hide the panels,
+// return the canvas to Preview, then report why.
+function failAnalysis(msg){
+  ST.res = null;
+  ['rb-disp','rb-frc','rb-rxn'].forEach(id=>{
+    const el = document.getElementById(id); if (el) el.innerHTML = '';
+  });
+  document.getElementById('rsp').classList.remove('on');
+  const ov = document.getElementById('mat-ov');
+  if (ov) { ov.style.display = 'none'; ov.innerHTML = ''; }
+  if (ST.view !== 'preview') setView('preview'); else draw();
+  setst(msg);
+}
+
 function doAnalyze() {
   setst('Running DSM analysis…');
   try {
     const {nodes, elems, mats, sups, nlds, mlds} = ST;
     const N=nodes.length, NE=elems.length;
-    if (!N||!NE) { setst('Error: need ≥1 node and ≥1 element.'); return; }
+    if (!N||!NE) { failAnalysis('Error: need \u22651 node and \u22651 element.'); return; }
 
     // DOF map
     const Emap = Array.from({length:N}, ()=>[0,0,0]);
@@ -759,7 +785,7 @@ function doAnalyze() {
       if (Emap[i][d]===0) { cnt++; Emap[i][d]=cnt; } else Emap[i][d]=0;
     }
     const NEq=cnt;
-    if (!NEq) { setst('Error: all DOFs are restrained — check supports.'); return; }
+    if (!NEq) { failAnalysis('Error: all DOFs are restrained \u2014 check supports.'); return; }
 
     // Assemble global stiffness
     const KG = Z(NEq, NEq);
@@ -768,14 +794,14 @@ function doAnalyze() {
     for (let i=0; i<NE; i++) {
       const el=elems[i];
       const ni=el[1]-1, nj=el[2]-1, pid=el[3], rel=el[4];
-      if (ni<0||ni>=N||nj<0||nj>=N) { setst(`Error: element ${i+1} references nonexistent node.`); return; }
+      if (ni<0||ni>=N||nj<0||nj>=N) { failAnalysis(`Error: element ${i+1} references nonexistent node.`); return; }
       const mat=mats.find(m=>m[0]===pid);
-      if (!mat) { setst(`Error: property ID ${pid} not found.`); return; }
+      if (!mat) { failAnalysis(`Error: property ID ${pid} not found.`); return; }
       const [,A,Ix,Emod]=mat;
       const [,xs,ys]=nodes[ni], [,xe,ye]=nodes[nj];
       const dX=xe-xs, dY=ye-ys;
       const L=Math.sqrt(dX*dX+dY*dY);
-      if (L<1e-10) { setst(`Error: element ${i+1} has zero length.`); return; }
+      if (L<1e-10) { failAnalysis(`Error: element ${i+1} has zero length.`); return; }
 
       // ang = -atan2(dY, dX)  [MATLAB convention]
       const ang=-Math.atan2(dY, dX);
@@ -804,12 +830,18 @@ function doAnalyze() {
     // Save structural K before penalty modification
     const KG_struct=KG.map(r=>[...r]);
 
-    // Zero-stiffness DOF detection (internal hinges)
+    // Zero-stiffness DOF detection (internal hinges).
+    // Such a DOF is pinned to zero by a large penalty term. That is a harmless
+    // convention for a free-floating rotation, but it would silently ABSORB any
+    // load applied to that DOF, so the penalised DOFs are recorded and checked
+    // against the load vector below.
+    const pinned=[];
     for (let eq=0; eq<NEq; eq++) {
       if (Math.abs(KG[eq][eq]) < 1e-10) {
         const maxD=Math.max(...KG.map((r,ri)=>ri===eq?0:Math.abs(r[ri])));
         KG[eq].fill(0); for(let r=0;r<NEq;r++) KG[r][eq]=0;
         KG[eq][eq]=(maxD||1)*1e6;
+        pinned.push(eq);
       }
     }
 
@@ -825,8 +857,36 @@ function doAnalyze() {
       for (let j=0;j<6;j++) if(ed.P[j]) F[ed.P[j]-1]-=ed.fm_glob[j];
     }
 
+    // A penalised DOF that carries load is a mechanism, not a free rotation:
+    // the penalty would swallow the load and quietly break equilibrium.
+    const dofNm=['Dx','Dy','Rz'], eqWhere={};
+    for (let i=0;i<N;i++) for (let d=0;d<3;d++)
+      if (Emap[i][d]) eqWhere[Emap[i][d]] = `node ${i+1} ${dofNm[d]}`;
+    const Fmax=Math.max(...F.map(Math.abs), 1);
+    const loadedFree=pinned.filter(eq=>Math.abs(F[eq])>Fmax*1e-9);
+    if (loadedFree.length) {
+      const list=loadedFree.map(eq=>eqWhere[eq+1]||`DOF ${eq+1}`).join(', ');
+      failAnalysis(`Unstable structure \u2014 load is applied at a degree of freedom with no `
+          + `stiffness: ${list}. The model is a mechanism (an element released at both `
+          + `ends carries no bending, so a transverse load there cannot be resisted). `
+          + `No results produced.`);
+      return;
+    }
+
     // Solve
-    const D=solveGE(KG, F);
+    const sol=solveGE(KG, F);
+    if (sol.singular.length) {
+      const dofName=['Dx','Dy','Rz'], where={};
+      for (let i=0;i<N;i++) for (let d=0;d<3;d++)
+        if (Emap[i][d]) where[Emap[i][d]] = `node ${i+1} ${dofName[d]}`;
+      const list=sol.singular.map(q=>where[q]||`DOF ${q}`).join(', ');
+      failAnalysis(`Unstable structure \u2014 the stiffness matrix is singular at: ${list}. `
+          + `The model contains a mechanism (e.g. an element hinged where it meets its `
+          + `only support, so it can rotate freely, or a missing restraint). `
+          + `No results produced.`);
+      return;
+    }
+    const D=sol.D;
     const tol=Math.max(...D.map(Math.abs))*1e-10||0;
     D.forEach((v,i)=>{ if(Math.abs(v)<tol) D[i]=0; });
 
@@ -883,7 +943,7 @@ function doAnalyze() {
     const mx=Math.max(...ND.flat().map(Math.abs));
     setst(`Analysis complete · ${N} nodes · ${NE} elements · ${NEq} free DOFs · max|Δ| = ${mx.toExponential(3)} m`);
   } catch(e) {
-    setst('Error: '+e.message); console.error(e);
+    failAnalysis('Error: '+e.message); console.error(e);
   }
 }
 
