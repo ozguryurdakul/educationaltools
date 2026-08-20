@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FrameAnalysisGUI v2.1</title>
+<title>FrameAnalysisGUI v3.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -284,7 +284,7 @@ canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
   <div class="hdr-sub">2D Frame Analysis &nbsp;·&nbsp; Direct Stiffness Method &nbsp;·&nbsp; Linear-Elastic Static</div>
   <div class="hdr-auth">
     Özgür Yurdakul &nbsp;|&nbsp; Faculty of Transport Engineering, University of Pardubice<br>
-    v2.1 (July 2026) &nbsp;·&nbsp; Units: kN, m, kN·m &nbsp;·&nbsp; CC BY-NC-SA 4.0<br>
+    v3.0 &nbsp;·&nbsp; Units: kN, m, kN·m &nbsp;·&nbsp; CC BY-NC-SA 4.0<br>
     <span class="cite-line">Yurdakul, Ö. (2026). <em>FrameAnalysisGUI</em>: A web-based 2D frame analysis tool (DSM). Univ. of Pardubice.
     Available at: <a href="https://ozguryurdakul.github.io/educationaltools/FrameAnalysisGUI.html" target="_blank">ozguryurdakul.github.io/educationaltools</a></span>
   </div>
@@ -382,7 +382,8 @@ canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
     <div class="tpnl" id="tp-mlds">
       <div class="ptit">Member Loads</div>
       <div class="phnt">Select the load Type from the dropdown.<br>
-        a_param: dist from node i [m] (0 = full span for UDL)</div>
+        a_param: dist from node i [m] (0 = full span for UDL).<br>
+        Triangular loads act over the full span &mdash; a_param is ignored.</div>
       <div class="twrap"><table class="dt" id="t-mlds">
         <thead><tr><th class="ckh">✓</th><th>Elem ID</th><th>Type</th><th>Magnitude</th><th>a_param [m]</th></tr></thead><tbody></tbody>
       </table></div>
@@ -452,7 +453,8 @@ const ST = {
 // Dropdown option sets (value → label). Shared by tables and print report.
 const OPT_REL  = [[0,'Fixed\u2013Fixed'],[1,'Hinge at j'],[2,'Hinge at i'],[3,'Both hinged']];
 const OPT_FIX  = [[1,'Fixed'],[0,'Free']];
-const OPT_MTYP = [[1,'Point Force'],[2,'Point Moment'],[3,'UDL']];
+const OPT_MTYP = [[1,'Point Force'],[2,'Point Moment'],[3,'UDL'],
+                  [4,'Triangular 0\u2192w'],[5,'Triangular w\u21920']];
 const labelOf = (opts,v) => { const o=opts.find(o=>o[0]==v); return o?o[1]:v; };
 
 const SEL = { nodes:new Set(), elems:new Set(), mats:new Set(),
@@ -689,6 +691,34 @@ function buildFEM(type, mag, ap, L, rel) {
   const f = Array(6).fill(0);
   if (!type || mag === 0) return f;
   const a = ap, b = L - a;
+
+  // ── Triangular (linearly varying) load over the full span ───────────
+  //   type 4 : 0 at end i  ->  mag at end j
+  //   type 5 : mag at end i ->  0 at end j
+  // f = [-, -V_i, +M_i, -, -V_j, +M_j].  a_param is not used.
+  if (type === 4 || type === 5) {
+    const w = mag, wL = w * L, wL2 = w * L * L;
+    const asc = (type === 4);                       // ascending toward j
+    let f1, f2, f4, f5;
+    switch (rel) {
+      case 0:  f1 = -3*wL/20;  f2 =  wL2/30;    f4 = -7*wL/20;  f5 = -wL2/20;   break;
+      case 1:  f1 = -9*wL/40;  f2 =  7*wL2/120; f4 = -11*wL/40; f5 = 0;         break;
+      case 2:  f1 = -wL/10;    f2 =  0;         f4 = -2*wL/5;   f5 = -wL2/15;   break;
+      default: f1 = -wL/6;     f2 =  0;         f4 = -wL/3;     f5 = 0;         break;
+    }
+    if (asc) { f[1]=f1; f[2]=f2; f[4]=f4; f[5]=f5; }
+    else {
+      // mirror end-for-end: swap the two ends and flip the moment signs
+      switch (rel) {
+        case 0:  f[1]=-7*wL/20;  f[2]= wL2/20;    f[4]=-3*wL/20;  f[5]=-wL2/30;    break;
+        case 1:  f[1]=-2*wL/5;   f[2]= wL2/15;    f[4]=-wL/10;    f[5]=0;          break;
+        case 2:  f[1]=-11*wL/40; f[2]= 0;         f[4]=-9*wL/40;  f[5]=-7*wL2/120; break;
+        default: f[1]=-wL/3;     f[2]= 0;         f[4]=-wL/6;     f[5]=0;          break;
+      }
+    }
+    return f;
+  }
+
   switch (rel) {
     case 0:
       if (type===1) {
@@ -1250,7 +1280,7 @@ function drawNodalLoads(tf){
       ctx.fillStyle='#FF80FF'; ctx.font=`${PF(10)}px Barlow,sans-serif`;
       ctx.fillText(`Fy=${Fy}kN`,pt.x+6,pt.y+dir*(al*.6+to));
     }
-    // Mz: moment arc (CW positive in MATLAB convention)
+    // Mz: moment arc (+Mz = counter-clockwise)
     if(Math.abs(Mz)>1e-6){
       drawMoment(pt.x,pt.y,mR*sc*.07,Mz>0,'#FF80FF');   // +Mz = CCW
       ctx.fillStyle='#FF80FF'; ctx.font=`${PF(10)}px Barlow,sans-serif`;
@@ -1303,6 +1333,23 @@ function drawMemberLoads(tf){
       const mx=(p1.x+ex)/2, my=(p1.y+ey)/2;
       ctx.fillStyle='#FF5050'; ctx.font=`bold ${PF(10)}px Barlow,sans-serif`;
       ctx.fillText(`q=${mag}kN/m`,mx-sign*px2*al*1.6,my-sign*py2*al*1.6);
+    } else if(type===4||type===5){
+      // Triangular load over the full span: arrow length tapers linearly
+      const asc=(type===4), nA=8;
+      for(let k=0;k<=nA;k++){
+        const t2=k/nA, frac=asc?t2:(1-t2);
+        const lx=p1.x+t2*dx, ly=p1.y+t2*dy;
+        if(frac<0.02) continue;
+        drawArrow(lx-sign*px2*al*frac,ly-sign*py2*al*frac,lx,ly,'#FF5050',1.5);
+      }
+      // sloping envelope from zero end to full end
+      const zx=p1.x+(asc?0:1)*dx, zy=p1.y+(asc?0:1)*dy;   // zero-intensity end
+      const fx=p1.x+(asc?1:0)*dx, fy=p1.y+(asc?1:0)*dy;   // full-intensity end
+      ctx.strokeStyle='#FF5050'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(zx,zy);
+      ctx.lineTo(fx-sign*px2*al,fy-sign*py2*al); ctx.stroke();
+      ctx.fillStyle='#FF5050'; ctx.font=`bold ${PF(10)}px Barlow,sans-serif`;
+      ctx.fillText(`w=${mag}kN/m`,fx-sign*px2*al*1.5,fy-sign*py2*al*1.5);
     }
   }
 }
@@ -1369,6 +1416,10 @@ function drawDeformed(){
       if(ml&&ml[1]===3&&rel===0){
         const q=-ml[2]; // negate (MATLAB uses -Magnitude)
         v_part=(q*xL**2*(L-xL)**2)/(24*Emod*Ix);
+      } else if(ml&&(ml[1]===4||ml[1]===5)&&rel===0){
+        const w=-ml[2];
+        const s = (ml[1]===4) ? xL : (L-xL);          // mirror for the w->0 case
+        v_part=(w/(Emod*Ix))*( s**5/(120*L) - L*s**3/40 + L*L*s*s/60 );
       } else if(ml&&ml[1]===1&&rel===0){
         const Fz=-ml[2], a=ml[3], b=L-a;
         if(a>0&&a<L){
@@ -1503,6 +1554,8 @@ function drawDiagram(type){
         if(ml){
           if(ml[1]===3){ const q=ml[2],av=ml[3]===0?L:ml[3]; if(xL<=av) val=er.fl[1]+q*xL; else val=er.fl[1]+q*av; }
           else if(ml[1]===1){ const a=ml[3]; if(xL>a) val=er.fl[1]+ml[2]; }
+          else if(ml[1]===4){ const w=ml[2]; val=er.fl[1]+w*xL*xL/(2*L); }
+          else if(ml[1]===5){ const w=ml[2]; val=er.fl[1]+w*xL-w*xL*xL/(2*L); }
         }
         // MATLAB: offset = -Fy_local * scale * perp
         val=-val; // per MATLAB sign: -Fy_local * perp
@@ -1513,6 +1566,8 @@ function drawDiagram(type){
           if(ml[1]===3){ const q=ml[2],av=ml[3]===0?L:ml[3]; val+=xL<=av?0.5*q*xL**2:0.5*q*av**2+(q*av)*(xL-av); }
           else if(ml[1]===1){ const Fz=ml[2],a=ml[3]; if(xL>a) val+=Fz*(xL-a); }
           else if(ml[1]===2){ const Mm=ml[2],a=ml[3]; if(xL>a) val+=Mm; }
+          else if(ml[1]===4){ const w=ml[2]; val+=w*xL**3/(6*L); }
+          else if(ml[1]===5){ const w=ml[2]; val+=w*xL*xL/2-w*xL**3/(6*L); }
         }
         // MATLAB: offset = +Mz * scale * perp
       }
@@ -1649,9 +1704,9 @@ function doPrint() {
   let body=`
 <div class="ph">
   <div class="pr">Özgür Yurdakul &nbsp;|&nbsp; University of Pardubice<br>${dtStr}</div>
-  <h1>FrameAnalysisGUI &nbsp; v2.1</h1>
+  <h1>FrameAnalysisGUI &nbsp; v3.0</h1>
   <p>2D Frame Analysis &nbsp;&middot;&nbsp; Direct Stiffness Method &nbsp;&middot;&nbsp; Linear-Elastic Static</p>
-  <p class="sub">Units: kN, m, kN&middot;m &nbsp;|&nbsp; Sign convention: Y-down positive, CW moment positive</p>
+  <p class="sub">Units: kN, m, kN&middot;m &nbsp;|&nbsp; Sign convention: v&darr; downward positive, &theta; counter-clockwise positive</p>
 </div>
 
 <div class="sec"><div class="sec-hdr">Input Data</div>
