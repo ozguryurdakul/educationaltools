@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FrameAnalysisGUI v3.0</title>
+<title>FrameAnalysisGUI v3.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -284,7 +284,7 @@ canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
   <div class="hdr-sub">2D Frame Analysis &nbsp;·&nbsp; Direct Stiffness Method &nbsp;·&nbsp; Linear-Elastic Static</div>
   <div class="hdr-auth">
     Özgür Yurdakul &nbsp;|&nbsp; Faculty of Transport Engineering, University of Pardubice<br>
-    v3.0 &nbsp;·&nbsp; Units: kN, m, kN·m &nbsp;·&nbsp; CC BY-NC-SA 4.0<br>
+    v3.1 &nbsp;·&nbsp; Units: kN, m, kN·m &nbsp;·&nbsp; CC BY-NC-SA 4.0<br>
     <span class="cite-line">Yurdakul, Ö. (2026). <em>FrameAnalysisGUI</em>: A web-based 2D frame analysis tool (DSM). Univ. of Pardubice.
     Available at: <a href="https://ozguryurdakul.github.io/educationaltools/FrameAnalysisGUI.html" target="_blank">ozguryurdakul.github.io/educationaltools</a></span>
   </div>
@@ -383,7 +383,12 @@ canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
       <div class="ptit">Member Loads</div>
       <div class="phnt">Select the load Type from the dropdown.<br>
         a_param: dist from node i [m] (0 = full span for UDL).<br>
-        Triangular loads act over the full span &mdash; a_param is ignored.</div>
+        Triangular loads act over the full span &mdash; a_param is ignored.<br>
+        <b>UDL</b> acts <b>perpendicular</b> to the member.
+        <b>UDL_along</b> and <b>UDL_horiz</b> act <b>vertically</b>:
+        <i>_along</i> is per metre of member, <i>_horiz</i> per metre of
+        horizontal projection. For both, a_param is the loaded length along
+        the member (0 = full span).</div>
       <div class="twrap"><table class="dt" id="t-mlds">
         <thead><tr><th class="ckh">✓</th><th>Elem ID</th><th>Type</th><th>Magnitude</th><th>a_param [m]</th></tr></thead><tbody></tbody>
       </table></div>
@@ -453,7 +458,8 @@ const ST = {
 // Dropdown option sets (value → label). Shared by tables and print report.
 const OPT_REL  = [[0,'Fixed\u2013Fixed'],[1,'Hinge at j'],[2,'Hinge at i'],[3,'Both hinged']];
 const OPT_FIX  = [[1,'Fixed'],[0,'Free']];
-const OPT_MTYP = [[1,'Point Force'],[2,'Point Moment'],[3,'UDL'],
+const OPT_MTYP = [[1,'Point Force'],[2,'Point Moment'],
+                  [3,'UDL'],[6,'UDL_along'],[7,'UDL_horiz'],
                   [4,'Triangular 0\u2192w'],[5,'Triangular w\u21920']];
 const labelOf = (opts,v) => { const o=opts.find(o=>o[0]==v); return o?o[1]:v; };
 
@@ -687,10 +693,33 @@ function buildKlocal(E, A, I, L, rel) {
   return kl;
 }
 
-function buildFEM(type, mag, ap, L, rel) {
+function buildFEM(type, mag, ap, L, rel, cx, cy) {
   const f = Array(6).fill(0);
   if (!type || mag === 0) return f;
   const a = ap, b = L - a;
+
+  // ── Vertical (gravity-direction) distributed load ───────────────────
+  //   type 6 : w per metre measured ALONG the member   (self-weight)
+  //   type 7 : w per metre of HORIZONTAL projection    (snow, code style)
+  // Member cosines (cx,cy)=(dX/L,dY/L). A downward load resolves into
+  //   local transverse  =  w*cx      (bending)
+  //   local axial       = -w*cy      (thrust along the member)
+  // a_param is not used; the load always spans the full member.
+  if (type === 6 || type === 7) {
+    const ccx = (cx === undefined) ? 1 : cx, ccy = (cy === undefined) ? 0 : cy;
+    const wAlong = (type === 7) ? mag * Math.abs(ccx) : mag;
+    const wPerp  =  wAlong * ccx;
+    const wAxial = -wAlong * ccy;
+    // a_param = loaded length measured ALONG the member from node i
+    // (same meaning as for a UDL); 0 or out of range means the full span.
+    const av = (ap === 0) ? L : Math.min(Math.max(ap, 0), L);
+    const g = buildFEM(3, wPerp, av, L, rel);       // bending part
+    // uniform axial load p over 0..av:  f0 = -p·av(2L-av)/2L,  f3 = -p·av²/2L
+    g[0] = -wAxial * av * (2*L - av) / (2*L);
+    g[3] = -wAxial * av * av / (2*L);
+    return g;
+  }
+
 
   // ── Triangular (linearly varying) load over the full span ───────────
   //   type 4 : 0 at end i  ->  mag at end j
@@ -849,7 +878,7 @@ function doAnalyze() {
         if (P[r]&&P[cc]) KG[P[r]-1][P[cc]-1]+=KGe[r][cc];
 
       const ml=mlds.find(m=>m[0]===el[0]);
-      const fm_loc=ml ? buildFEM(ml[1],ml[2],ml[3],L,rel) : Array(6).fill(0);
+      const fm_loc=ml ? buildFEM(ml[1],ml[2],ml[3],L,rel,dX/L,dY/L) : Array(6).fill(0);
       const fm_glob=MV(Tt, fm_loc);
 
       // element direction cosines for display
@@ -1333,6 +1362,55 @@ function drawMemberLoads(tf){
       const mx=(p1.x+ex)/2, my=(p1.y+ey)/2;
       ctx.fillStyle='#FF5050'; ctx.font=`bold ${PF(10)}px Barlow,sans-serif`;
       ctx.fillText(`q=${mag}kN/m`,mx-sign*px2*al*1.6,my-sign*py2*al*1.6);
+    } else if(type===6||type===7){
+      // Gravity loads: arrows are vertical on screen, never perpendicular.
+      //   UDL_along (6): block follows the member  -> envelope parallel to it
+      //   UDL_horiz (7): block spans the HORIZONTAL projection -> flat envelope
+      //                  held clear of the member, equal-length arrows
+      const cxm=(n2[1]-n1[1])/Lw;
+      const wA=(type===7)?mag*Math.abs(cxm):mag;
+      const vdir=mag>0?1:-1;                      // +mag = downward on screen
+      const nA=8;
+      // loaded length along the member (a_param); 0 = full span
+      const avL=(ap===0)?Lw:Math.min(Math.max(ap,0),Lw), fr=avL/Lw;
+      const q1x=p1.x, q1y=p1.y;                   // start of the loaded run
+      const q2x=p1.x+dx*fr, q2y=p1.y+dy*fr;       // end of the loaded run
+      ctx.strokeStyle='#FF5050'; ctx.lineWidth=2;
+      let mxg,myg;
+      if(type===7){
+        // flat line clear of the higher end; arrows all the same length
+        const yBase=(vdir>0)?Math.min(q1y,q2y):Math.max(q1y,q2y);
+        const yTop=yBase-vdir*al*1.15;
+        const aLen=al*0.72;
+        ctx.beginPath(); ctx.moveTo(q1x,yTop); ctx.lineTo(q2x,yTop); ctx.stroke();
+        for(let k=0;k<=nA;k++){
+          const lx=q1x+(q2x-q1x)*k/nA;
+          drawArrow(lx,yTop,lx,yTop+vdir*aLen,'#FF5050',1.5);
+        }
+        // faint droppers tying the block ends down to the member
+        ctx.save(); ctx.setLineDash([3,3]); ctx.lineWidth=1; ctx.strokeStyle='rgba(255,80,80,0.45)';
+        ctx.beginPath(); ctx.moveTo(q1x,yTop); ctx.lineTo(q1x,q1y); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(q2x,yTop); ctx.lineTo(q2x,q2y); ctx.stroke();
+        ctx.restore();
+        mxg=(q1x+q2x)/2; myg=yTop;
+      } else {
+        const tips=[];
+        for(let k=0;k<=nA;k++){
+          const t2=(k/nA)*fr, lx=p1.x+t2*dx, ly=p1.y+t2*dy;
+          const ty=ly-vdir*al; tips.push([lx,ty]);
+          drawArrow(lx,ty,lx,ly,'#FF5050',1.5);
+        }
+        ctx.beginPath(); ctx.moveTo(tips[0][0],tips[0][1]);
+        for(const [ax,ay] of tips.slice(1)) ctx.lineTo(ax,ay);
+        ctx.stroke();
+        mxg=(tips[0][0]+tips[nA][0])/2; myg=(tips[0][1]+tips[nA][1])/2;
+      }
+      // Running total: tells UDL_along and UDL_horiz apart at a glance
+      const totG=wA*avL, tg=Math.abs(totG)>=100?totG.toFixed(0):totG.toFixed(1);
+      ctx.fillStyle='#FF5050'; ctx.font=`bold ${PF(10)}px Barlow,sans-serif`;
+      ctx.textAlign='center';
+      ctx.fillText(`${mag}kN/m${type===7?' horiz':''}  \u03a3${tg}kN`,mxg,myg-vdir*8);
+      ctx.textAlign='left';
     } else if(type===4||type===5){
       // Triangular load over the full span: arrow length tapers linearly
       const asc=(type===4), nA=8;
@@ -1415,6 +1493,11 @@ function drawDeformed(){
       let v_part=0;
       if(ml&&ml[1]===3&&rel===0){
         const q=-ml[2]; // negate (MATLAB uses -Magnitude)
+        v_part=(q*xL**2*(L-xL)**2)/(24*Emod*Ix);
+      } else if(ml&&(ml[1]===6||ml[1]===7)&&rel===0){
+        const wA=(ml[1]===7)?ml[2]*Math.abs(cosE):ml[2];
+        const avD=(ml[3]===0)?L:Math.min(Math.max(ml[3],0),L);
+        const q=-(wA*cosE)*(avD/L);          // scaled for a partial load
         v_part=(q*xL**2*(L-xL)**2)/(24*Emod*Ix);
       } else if(ml&&(ml[1]===4||ml[1]===5)&&rel===0){
         const w=-ml[2];
@@ -1548,6 +1631,12 @@ function drawDiagram(type){
       let val=0;
       if(type==='axial'){
         val=er.fl[0]*(1-xi)+(-er.fl[3])*xi; // linear interpolation axial
+        if(ml&&(ml[1]===6||ml[1]===7)){
+          // uniform axial load over 0..av -> N is bilinear, not linear
+          const wA=(ml[1]===7)?ml[2]*Math.abs(cosE):ml[2];
+          const px=-wA*sinE, av=(ml[3]===0)?L:Math.min(Math.max(ml[3],0),L);
+          val=er.fl[0]+px*Math.min(xL,av);
+        }
       } else if(type==='shear'){
         // shear varies with member loads
         val=er.fl[1]; // Fy at i-end (local)
@@ -1556,6 +1645,10 @@ function drawDiagram(type){
           else if(ml[1]===1){ const a=ml[3]; if(xL>a) val=er.fl[1]+ml[2]; }
           else if(ml[1]===4){ const w=ml[2]; val=er.fl[1]+w*xL*xL/(2*L); }
           else if(ml[1]===5){ const w=ml[2]; val=er.fl[1]+w*xL-w*xL*xL/(2*L); }
+          else if(ml[1]===6||ml[1]===7){
+            const wA=(ml[1]===7)?ml[2]*Math.abs(cosE):ml[2];
+            const wp=wA*cosE, av=(ml[3]===0)?L:Math.min(Math.max(ml[3],0),L);
+            val=er.fl[1]+wp*Math.min(xL,av); }
         }
         // MATLAB: offset = -Fy_local * scale * perp
         val=-val; // per MATLAB sign: -Fy_local * perp
@@ -1568,6 +1661,10 @@ function drawDiagram(type){
           else if(ml[1]===2){ const Mm=ml[2],a=ml[3]; if(xL>a) val+=Mm; }
           else if(ml[1]===4){ const w=ml[2]; val+=w*xL**3/(6*L); }
           else if(ml[1]===5){ const w=ml[2]; val+=w*xL*xL/2-w*xL**3/(6*L); }
+          else if(ml[1]===6||ml[1]===7){
+            const wA=(ml[1]===7)?ml[2]*Math.abs(cosE):ml[2];
+            const wp=wA*cosE, av=(ml[3]===0)?L:Math.min(Math.max(ml[3],0),L);
+            val+=(xL<=av)?0.5*wp*xL*xL:0.5*wp*av*av+(wp*av)*(xL-av); }
         }
         // MATLAB: offset = +Mz * scale * perp
       }
@@ -1704,7 +1801,7 @@ function doPrint() {
   let body=`
 <div class="ph">
   <div class="pr">Özgür Yurdakul &nbsp;|&nbsp; University of Pardubice<br>${dtStr}</div>
-  <h1>FrameAnalysisGUI &nbsp; v3.0</h1>
+  <h1>FrameAnalysisGUI &nbsp; v3.1</h1>
   <p>2D Frame Analysis &nbsp;&middot;&nbsp; Direct Stiffness Method &nbsp;&middot;&nbsp; Linear-Elastic Static</p>
   <p class="sub">Units: kN, m, kN&middot;m &nbsp;|&nbsp; Sign convention: v&darr; downward positive, &theta; counter-clockwise positive</p>
 </div>
