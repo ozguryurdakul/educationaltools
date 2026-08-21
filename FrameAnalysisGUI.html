@@ -387,8 +387,9 @@ canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
         <b>UDL</b> acts <b>perpendicular</b> to the member.
         <b>UDL_along</b> and <b>UDL_horiz</b> act <b>vertically</b>:
         <i>_along</i> is per metre of member, <i>_horiz</i> per metre of
-        horizontal projection. For both, a_param is the loaded length along
-        the member (0 = full span).</div>
+        horizontal projection. a_param is the loaded length from node i
+        (0 = full span) &mdash; measured <b>along the member</b> for UDL_along,
+        <b>horizontally</b> for UDL_horiz.</div>
       <div class="twrap"><table class="dt" id="t-mlds">
         <thead><tr><th class="ckh">✓</th><th>Elem ID</th><th>Type</th><th>Magnitude</th><th>a_param [m]</th></tr></thead><tbody></tbody>
       </table></div>
@@ -696,6 +697,8 @@ function buildKlocal(E, A, I, L, rel) {
 function buildFEM(type, mag, ap, L, rel, cx, cy) {
   const f = Array(6).fill(0);
   if (!type || mag === 0) return f;
+  // a UDL's loaded length can never exceed the member (see checkLoadParams)
+  if (type === 3 && ap !== 0) ap = Math.min(Math.max(ap, 0), L);
   const a = ap, b = L - a;
 
   // ── Vertical (gravity-direction) distributed load ───────────────────
@@ -710,9 +713,11 @@ function buildFEM(type, mag, ap, L, rel, cx, cy) {
     const wAlong = (type === 7) ? mag * Math.abs(ccx) : mag;
     const wPerp  =  wAlong * ccx;
     const wAxial = -wAlong * ccy;
-    // a_param = loaded length measured ALONG the member from node i
-    // (same meaning as for a UDL); 0 or out of range means the full span.
-    const av = (ap === 0) ? L : Math.min(Math.max(ap, 0), L);
+    // a_param = loaded length from node i.  For UDL_along it is measured along
+    // the member; for UDL_horiz it is a HORIZONTAL length, converted here to the
+    // equivalent along-member length.  0 or out of range means the full span.
+    const apA = (type === 7 && Math.abs(ccx) > 1e-12) ? ap / Math.abs(ccx) : ap;
+    const av  = (ap === 0) ? L : Math.min(Math.max(apA, 0), L);
     const g = buildFEM(3, wPerp, av, L, rel);       // bending part
     // uniform axial load p over 0..av:  f0 = -p·av(2L-av)/2L,  f3 = -p·av²/2L
     g[0] = -wAxial * av * (2*L - av) / (2*L);
@@ -1000,7 +1005,9 @@ function doAnalyze() {
     setView('deformed');
 
     const mx=Math.max(...ND.flat().map(Math.abs));
-    setst(`Analysis complete · ${N} nodes · ${NE} elements · ${NEq} free DOFs · max|Δ| = ${mx.toExponential(3)} m`);
+    const lw=checkLoadParams();
+    if(lw.length) setwarn(`\u26a0 ${lw.length} load warning${lw.length>1?'s':''}: `+lw.join('  \u00b7  '));
+    else setst(`Analysis complete · ${N} nodes · ${NE} elements · ${NEq} free DOFs · max|Δ| = ${mx.toExponential(3)} m`);
   } catch(e) {
     failAnalysis('Error: '+e.message); console.error(e);
   }
@@ -1372,7 +1379,8 @@ function drawMemberLoads(tf){
       const vdir=mag>0?1:-1;                      // +mag = downward on screen
       const nA=8;
       // loaded length along the member (a_param); 0 = full span
-      const avL=(ap===0)?Lw:Math.min(Math.max(ap,0),Lw), fr=avL/Lw;
+      const apP=(type===7&&Math.abs(cxm)>1e-12)?ap/Math.abs(cxm):ap;
+      const avL=(ap===0)?Lw:Math.min(Math.max(apP,0),Lw), fr=avL/Lw;
       const q1x=p1.x, q1y=p1.y;                   // start of the loaded run
       const q2x=p1.x+dx*fr, q2y=p1.y+dy*fr;       // end of the loaded run
       ctx.strokeStyle='#FF5050'; ctx.lineWidth=2;
@@ -1496,7 +1504,8 @@ function drawDeformed(){
         v_part=(q*xL**2*(L-xL)**2)/(24*Emod*Ix);
       } else if(ml&&(ml[1]===6||ml[1]===7)&&rel===0){
         const wA=(ml[1]===7)?ml[2]*Math.abs(cosE):ml[2];
-        const avD=(ml[3]===0)?L:Math.min(Math.max(ml[3],0),L);
+        const apD=(ml[1]===7&&Math.abs(cosE)>1e-12)?ml[3]/Math.abs(cosE):ml[3];
+        const avD=(ml[3]===0)?L:Math.min(Math.max(apD,0),L);
         const q=-(wA*cosE)*(avD/L);          // scaled for a partial load
         v_part=(q*xL**2*(L-xL)**2)/(24*Emod*Ix);
       } else if(ml&&(ml[1]===4||ml[1]===5)&&rel===0){
@@ -1643,7 +1652,8 @@ function drawDiagram(type){
         if(ml&&(ml[1]===6||ml[1]===7)){
           // uniform axial load over 0..av -> N is bilinear, not linear
           const wA=(ml[1]===7)?ml[2]*Math.abs(cosE):ml[2];
-          const px=-wA*sinE, av=(ml[3]===0)?L:Math.min(Math.max(ml[3],0),L);
+          const apA=(ml[1]===7&&Math.abs(cosE)>1e-12)?ml[3]/Math.abs(cosE):ml[3];
+          const px=-wA*sinE, av=(ml[3]===0)?L:Math.min(Math.max(apA,0),L);
           val=er.fl[0]+px*Math.min(xL,av);
         }
       } else if(type==='shear'){
@@ -1656,7 +1666,8 @@ function drawDiagram(type){
           else if(ml[1]===5){ const w=ml[2]; val=er.fl[1]+w*xL-w*xL*xL/(2*L); }
           else if(ml[1]===6||ml[1]===7){
             const wA=(ml[1]===7)?ml[2]*Math.abs(cosE):ml[2];
-            const wp=wA*cosE, av=(ml[3]===0)?L:Math.min(Math.max(ml[3],0),L);
+            const apA=(ml[1]===7&&Math.abs(cosE)>1e-12)?ml[3]/Math.abs(cosE):ml[3];
+            const wp=wA*cosE, av=(ml[3]===0)?L:Math.min(Math.max(apA,0),L);
             val=er.fl[1]+wp*Math.min(xL,av); }
         }
         // MATLAB: offset = -Fy_local * scale * perp
@@ -1672,7 +1683,8 @@ function drawDiagram(type){
           else if(ml[1]===5){ const w=ml[2]; val+=w*xL*xL/2-w*xL**3/(6*L); }
           else if(ml[1]===6||ml[1]===7){
             const wA=(ml[1]===7)?ml[2]*Math.abs(cosE):ml[2];
-            const wp=wA*cosE, av=(ml[3]===0)?L:Math.min(Math.max(ml[3],0),L);
+            const apA=(ml[1]===7&&Math.abs(cosE)>1e-12)?ml[3]/Math.abs(cosE):ml[3];
+            const wp=wA*cosE, av=(ml[3]===0)?L:Math.min(Math.max(apA,0),L);
             val+=(xL<=av)?0.5*wp*xL*xL:0.5*wp*av*av+(wp*av)*(xL-av); }
         }
         // MATLAB: offset = +Mz * scale * perp
@@ -1740,12 +1752,47 @@ new ResizeObserver(resizeCanvas).observe(cv.parentElement);
 // ============================================================
 // UI ACTIONS
 // ============================================================
-function setst(msg){ document.getElementById('stmsg').textContent=msg; }
+function setst(msg){ const e=document.getElementById('stmsg');
+  e.textContent=msg; e.style.color=''; e.title=msg; }
+function setwarn(msg){ const e=document.getElementById('stmsg');
+  e.textContent=msg; e.style.color='#FFB300'; e.title=msg; }
+
+// Validate every member load's a_param against its element. Returns a list of
+// human-readable warnings; the analysis still runs, with values clamped.
+function checkLoadParams(){
+  const w=[];
+  for(const ml of ST.mlds){
+    const el=ST.elems.find(e=>e[0]===ml[0]); if(!el) continue;
+    const n1=ST.nodes[el[1]-1], n2=ST.nodes[el[2]-1]; if(!n1||!n2) continue;
+    const dX=n2[1]-n1[1], dY=n2[2]-n1[2];
+    const L=Math.hypot(dX,dY); if(L<1e-10) continue;
+    const t=ml[1], ap=ml[3], id=`Elem ${el[0]}`;
+    const r=v=>(+v.toFixed(3));
+    if(t===1||t===2){
+      if(ap<=0||ap>=L) w.push(`${id}: point load at a_param=${r(ap)} is not inside the member `+
+                               `(0 < a < ${r(L)}) \u2014 load IGNORED`);
+    } else if(t===3||t===6){
+      if(ap<0||ap>L) w.push(`${id}: a_param=${r(ap)} outside 0\u2026${r(L)} m along the member \u2014 clamped`);
+    } else if(t===7){
+      const Lx=Math.abs(dX);
+      if(Lx<1e-10) w.push(`${id}: UDL_horiz on a vertical member has no horizontal projection \u2014 no load applied`);
+      else if(ap<0||ap>Lx) w.push(`${id}: a_param=${r(ap)} outside 0\u2026${r(Lx)} m horizontally \u2014 clamped`);
+    } else if(t===4||t===5){
+      if(ap!==0) w.push(`${id}: triangular loads span the full member \u2014 a_param=${r(ap)} ignored`);
+    }
+  }
+  return w;
+}
 function setView(v){
   document.querySelectorAll('.vbtn').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   ST.view=v; draw();
 }
-function doUpdatePlot(){ setView('preview'); setst('Preview updated.'); }
+function doUpdatePlot(){
+  setView('preview');
+  const lw=checkLoadParams();
+  if(lw.length) setwarn(`\u26a0 ${lw.length} load warning${lw.length>1?'s':''}: `+lw.join('  \u00b7  '));
+  else setst('Preview updated.');
+}
 function doClear(){ ST.res=null; document.getElementById('rsp').classList.remove('on'); document.getElementById('mat-ov').style.display='none'; setView('preview'); setst('Preview cleared.'); }
 function doReset(){ ST.res=null; document.getElementById('rsp').classList.remove('on'); setView('preview'); setst('View reset.'); }
 
