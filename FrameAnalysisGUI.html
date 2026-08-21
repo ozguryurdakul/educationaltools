@@ -1566,19 +1566,28 @@ function drawReactions(){
     const n=nodes[r.node-1]; if(!n) continue;
     const pt=p(n[1],n[2]);
 
+    const RCOL = PM?'#007040':'#00D080';
     if(r.Rx!=null&&Math.abs(r.Rx)>1e-5){
-      // Rx: horizontal reaction (positive = rightward)
+      // Rx: horizontal reaction (positive = rightward). Head sits at the node,
+      // so the value is written at the TAIL, clear of the support symbol.
       const dir=Math.sign(r.Rx);
-      drawArrow(pt.x-dir*Math.abs(r.Rx)*rsc,pt.y,pt.x,pt.y, PM?'#007040':' #00D080',2);
+      const tx=pt.x-dir*Math.abs(r.Rx)*rsc;
+      drawArrow(tx,pt.y,pt.x,pt.y,RCOL,2);
       ctx.fillStyle='#00D080'; ctx.font=`bold ${PF(10)}px "JetBrains Mono",monospace`;
-      ctx.fillText(`${r.Rx.toFixed(2)}`,pt.x+dir*6,pt.y-5);
+      ctx.textAlign = dir>0 ? 'right' : 'left';
+      ctx.fillText(`${r.Rx.toFixed(2)}`,tx-dir*7,pt.y-5);
+      ctx.textAlign='left';
     }
     if(r.Ry!=null&&Math.abs(r.Ry)>1e-5){
-      // Ry display: positive=downward (Y-down) so arrow points down in canvas for positive value
+      // Ry is UPWARD-positive. Canvas y grows downward, so the tail must sit
+      // BELOW the node for a positive reaction to make the head point up.
       const dir=Math.sign(r.Ry);
-      drawArrow(pt.x,pt.y-dir*Math.abs(r.Ry)*rsc,pt.x,pt.y, PM?'#007040':'#00D080',2);
+      const ty=pt.y+dir*Math.abs(r.Ry)*rsc;
+      drawArrow(pt.x,ty,pt.x,pt.y,RCOL,2);
       ctx.fillStyle='#00D080'; ctx.font=`bold ${PF(10)}px "JetBrains Mono",monospace`;
-      ctx.fillText(`${r.Ry.toFixed(2)}`,pt.x+6,pt.y+dir*10);
+      ctx.textAlign='center';
+      ctx.fillText(`${r.Ry.toFixed(2)}`,pt.x,ty+dir*13+(dir>0?0:-2));
+      ctx.textAlign='left';
     }
     if(r.Mz!=null&&Math.abs(r.Mz)>1e-5){
       drawMoment(pt.x,pt.y,mR*sc*.08,r.Mz>0,'#00D080');   // +Mz = CCW
