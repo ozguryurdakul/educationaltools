@@ -1761,6 +1761,15 @@ function setwarn(msg){ const e=document.getElementById('stmsg');
 // human-readable warnings; the analysis still runs, with values clamped.
 function checkLoadParams(){
   const w=[];
+  // Only ONE member load per element is applied: the assembly uses
+  // mlds.find(...), which takes the first match and ignores the rest.
+  const cnt=new Map();
+  for(const ml of ST.mlds) cnt.set(ml[0],(cnt.get(ml[0])||0)+1);
+  for(const [id,c] of cnt){
+    if(c>1) w.push(`Elem ${id}: ${c} member loads defined \u2014 only the FIRST is `+
+                   `applied, the other ${c-1} ${c-1>1?'are':'is'} IGNORED. `+
+                   `Combine them into one load, or split the element at a new node.`);
+  }
   for(const ml of ST.mlds){
     const el=ST.elems.find(e=>e[0]===ml[0]); if(!el) continue;
     const n1=ST.nodes[el[1]-1], n2=ST.nodes[el[2]-1]; if(!n1||!n2) continue;
