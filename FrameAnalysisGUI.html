@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FrameAnalysisGUI v3.1</title>
+<title>FrameAnalysisGUI v4.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -284,7 +284,7 @@ canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
   <div class="hdr-sub">2D Frame Analysis &nbsp;·&nbsp; Direct Stiffness Method &nbsp;·&nbsp; Linear-Elastic Static</div>
   <div class="hdr-auth">
     Özgür Yurdakul &nbsp;|&nbsp; Faculty of Transport Engineering, University of Pardubice<br>
-    v3.1 &nbsp;·&nbsp; Units: kN, m, kN·m &nbsp;·&nbsp; CC BY-NC-SA 4.0<br>
+    v4.0 &nbsp;·&nbsp; Units: kN, m, kN·m &nbsp;·&nbsp; CC BY-NC-SA 4.0<br>
     <span class="cite-line">Yurdakul, Ö. (2026). <em>FrameAnalysisGUI</em>: A web-based 2D frame analysis tool (DSM). Univ. of Pardubice.
     Available at: <a href="https://ozguryurdakul.github.io/educationaltools/FrameAnalysisGUI.html" target="_blank">ozguryurdakul.github.io/educationaltools</a></span>
   </div>
@@ -514,12 +514,13 @@ function renderTbl(nm) {
         });
         s.addEventListener('change', () => {
           ST[nm][ri][ci] = parseInt(s.value, 10);   // redraw only on Update Plot
+          modelEdited();
         });
         td.appendChild(s);
       } else {                                      // ── numeric cell ──
         const inp = document.createElement('input');
         inp.type = 'number'; inp.step = 'any'; inp.value = val;
-        inp.addEventListener('change', () => { ST[nm][ri][ci] = parseFloat(inp.value) || 0; });
+        inp.addEventListener('change', () => { ST[nm][ri][ci] = parseFloat(inp.value) || 0; modelEdited(); });
         td.appendChild(inp);
       }
       tr.appendChild(td);
@@ -534,7 +535,7 @@ function addRow(nm) {
     const nextId = ST[nm].length ? Math.max(...ST[nm].map(r => r[0])) + 1 : 1;
     ST[nm].push([nextId, ...d]);
   } else ST[nm].push(d);
-  SEL[nm].clear(); renderTbl(nm);
+  SEL[nm].clear(); renderTbl(nm); modelEdited();
 }
 function clrTbl(nm) { ST[nm] = []; SEL[nm].clear(); renderTbl(nm); invalidate(); }
 
@@ -545,6 +546,15 @@ function invalidate(){
   document.getElementById('rsp').classList.remove('on');
   document.getElementById('mat-ov').style.display = 'none';
   if (ST.view !== 'preview') setView('preview'); else draw();
+}
+
+// An edit made after an analysis leaves the results describing a model that no
+// longer exists, so they are dropped (as Remove Selected and Clear All already do).
+// Before any analysis this does nothing: the plot still redraws only on Update Plot.
+function modelEdited(){
+  if (!ST.res) return;
+  invalidate();
+  setst('Model changed \u2014 previous results cleared. Click Analyze to recompute.');
 }
 
 // Renumber elements 1..N and remap member-load references
@@ -717,7 +727,7 @@ function buildFEM(type, mag, ap, L, rel, cx, cy) {
     // the member; for UDL_horiz it is a HORIZONTAL length, converted here to the
     // equivalent along-member length.  0 or out of range means the full span.
     const apA = (type === 7 && Math.abs(ccx) > 1e-12) ? ap / Math.abs(ccx) : ap;
-    const av  = (ap === 0) ? L : Math.min(Math.max(apA, 0), L);
+    const av  = (ap <= 0) ? L : Math.min(Math.max(apA, 0), L);
     const g = buildFEM(3, wPerp, av, L, rel);       // bending part
     // uniform axial load p over 0..av:  f0 = -p·av(2L-av)/2L,  f3 = -p·av²/2L
     g[0] = -wAxial * av * (2*L - av) / (2*L);
@@ -900,11 +910,16 @@ function doAnalyze() {
     // load applied to that DOF, so the penalised DOFs are recorded and checked
     // against the load vector below.
     const pinned=[];
+    // The stand-in stiffness is taken ONCE from the untouched matrix and is of
+    // the same order as the real terms. (Deriving it inside the loop, times 1e6,
+    // let each new term build on the previous one; the singularity tolerance in
+    // solveGE then rose above the real stiffnesses, and stable models with two
+    // or more such DOFs - trusses, unconnected nodes - were rejected as unstable.)
+    const kRef=Math.max(...KG_struct.map((r,ri)=>Math.abs(r[ri])))||1;
     for (let eq=0; eq<NEq; eq++) {
       if (Math.abs(KG[eq][eq]) < 1e-10) {
-        const maxD=Math.max(...KG.map((r,ri)=>ri===eq?0:Math.abs(r[ri])));
         KG[eq].fill(0); for(let r=0;r<NEq;r++) KG[r][eq]=0;
-        KG[eq][eq]=(maxD||1)*1e6;
+        KG[eq][eq]=kRef;
         pinned.push(eq);
       }
     }
@@ -1355,7 +1370,7 @@ function drawMemberLoads(tf){
       ctx.fillText(`M=${mag}`,lx+px2*al,ly+py2*al);
     } else if(type===3){
       // UDL over loaded length
-      const loadL=ap===0?Lw:ap, ratioEnd=loadL/Lw;
+      const loadL=ap<=0?Lw:ap, ratioEnd=loadL/Lw;
       const ex=p1.x+ratioEnd*dx, ey=p1.y+ratioEnd*dy;
       const nArrows=Math.max(3,Math.round(loadL/Lw*6));
       for(let k=0;k<=nArrows;k++){
@@ -1380,7 +1395,7 @@ function drawMemberLoads(tf){
       const nA=8;
       // loaded length along the member (a_param); 0 = full span
       const apP=(type===7&&Math.abs(cxm)>1e-12)?ap/Math.abs(cxm):ap;
-      const avL=(ap===0)?Lw:Math.min(Math.max(apP,0),Lw), fr=avL/Lw;
+      const avL=(ap<=0)?Lw:Math.min(Math.max(apP,0),Lw), fr=avL/Lw;
       const q1x=p1.x, q1y=p1.y;                   // start of the loaded run
       const q2x=p1.x+dx*fr, q2y=p1.y+dy*fr;       // end of the loaded run
       ctx.strokeStyle='#FF5050'; ctx.lineWidth=2;
@@ -1505,7 +1520,7 @@ function drawDeformed(){
       } else if(ml&&(ml[1]===6||ml[1]===7)&&rel===0){
         const wA=(ml[1]===7)?ml[2]*Math.abs(cosE):ml[2];
         const apD=(ml[1]===7&&Math.abs(cosE)>1e-12)?ml[3]/Math.abs(cosE):ml[3];
-        const avD=(ml[3]===0)?L:Math.min(Math.max(apD,0),L);
+        const avD=(ml[3]<=0)?L:Math.min(Math.max(apD,0),L);
         const q=-(wA*cosE)*(avD/L);          // scaled for a partial load
         v_part=(q*xL**2*(L-xL)**2)/(24*Emod*Ix);
       } else if(ml&&(ml[1]===4||ml[1]===5)&&rel===0){
@@ -1618,14 +1633,84 @@ function drawDiagram(type){
   drawElements(tf,'rgba(80,120,200,0.35)',1.2,[]);
   drawSupports(tf);
 
-  // Max value for scaling
-  let maxV=0;
-  const getVals=(er,type)=>{
-    if(type==='axial') return [er.fl[0],-er.fl[3]];
-    if(type==='shear') return [er.fl[1],-er.fl[4]];
-    return [er.fl[2],-er.fl[5]];
+  // Diagram ordinate of element i at local station xL. These are the same
+  // expressions as before, gathered in one place so that the true extreme can
+  // be found BEFORE anything is drawn. A load enters here only as the solver
+  // applied it: a point load outside 0 < a < L is ignored, and a distributed
+  // load with a_param <= 0 (or beyond the member) acts on the full span.
+  const nPts=60;
+  const ordinate=(i,xL)=>{
+    const ed=ED[i], er=ER[i];
+    const {L,cosE,sinE,ml}=ed;
+    const xi=xL/L;
+    const inSpan=ml&&ml[3]>0&&ml[3]<L;       // point load actually applied
+    let val=0;
+    if(type==='axial'){
+      val=er.fl[0]*(1-xi)+(-er.fl[3])*xi; // linear interpolation axial
+      if(ml&&(ml[1]===6||ml[1]===7)){
+        // uniform axial load over 0..av -> N is bilinear, not linear
+        const wA=(ml[1]===7)?ml[2]*Math.abs(cosE):ml[2];
+        const apA=(ml[1]===7&&Math.abs(cosE)>1e-12)?ml[3]/Math.abs(cosE):ml[3];
+        const px=-wA*sinE, av=(ml[3]<=0)?L:Math.min(Math.max(apA,0),L);
+        val=er.fl[0]+px*Math.min(xL,av);
+      }
+    } else if(type==='shear'){
+      // shear varies with member loads
+      val=er.fl[1]; // Fy at i-end (local)
+      if(ml){
+        if(ml[1]===3){ const q=ml[2],av=(ml[3]<=0||ml[3]>L)?L:ml[3]; if(xL<=av) val=er.fl[1]+q*xL; else val=er.fl[1]+q*av; }
+        else if(ml[1]===1){ const a=ml[3]; if(inSpan&&xL>a) val=er.fl[1]+ml[2]; }
+        else if(ml[1]===4){ const w=ml[2]; val=er.fl[1]+w*xL*xL/(2*L); }
+        else if(ml[1]===5){ const w=ml[2]; val=er.fl[1]+w*xL-w*xL*xL/(2*L); }
+        else if(ml[1]===6||ml[1]===7){
+          const wA=(ml[1]===7)?ml[2]*Math.abs(cosE):ml[2];
+          const apA=(ml[1]===7&&Math.abs(cosE)>1e-12)?ml[3]/Math.abs(cosE):ml[3];
+          const wp=wA*cosE, av=(ml[3]<=0)?L:Math.min(Math.max(apA,0),L);
+          val=er.fl[1]+wp*Math.min(xL,av); }
+      }
+      // MATLAB: offset = -Fy_local * scale * perp
+      val=-val; // per MATLAB sign: -Fy_local * perp
+    } else {
+      // moment: M(x) = Mz_start + Fy_start * x + ...
+      val=er.fl[2]+er.fl[1]*xL;
+      if(ml){
+        if(ml[1]===3){ const q=ml[2],av=(ml[3]<=0||ml[3]>L)?L:ml[3]; val+=xL<=av?0.5*q*xL**2:0.5*q*av**2+(q*av)*(xL-av); }
+        else if(ml[1]===1){ const Fz=ml[2],a=ml[3]; if(inSpan&&xL>a) val+=Fz*(xL-a); }
+        else if(ml[1]===2){ const Mm=ml[2],a=ml[3]; if(inSpan&&xL>a) val+=Mm; }
+        else if(ml[1]===4){ const w=ml[2]; val+=w*xL**3/(6*L); }
+        else if(ml[1]===5){ const w=ml[2]; val+=w*xL*xL/2-w*xL**3/(6*L); }
+        else if(ml[1]===6||ml[1]===7){
+          const wA=(ml[1]===7)?ml[2]*Math.abs(cosE):ml[2];
+          const apA=(ml[1]===7&&Math.abs(cosE)>1e-12)?ml[3]/Math.abs(cosE):ml[3];
+          const wp=wA*cosE, av=(ml[3]<=0)?L:Math.min(Math.max(apA,0),L);
+          val+=(xL<=av)?0.5*wp*xL*xL:0.5*wp*av*av+(wp*av)*(xL-av); }
+      }
+      // MATLAB: offset = +Mz * scale * perp
+    }
+    return val;
   };
-  for(const er of ER) maxV=Math.max(maxV,...getVals(er,type).map(Math.abs));
+
+  // True extreme over every element, used for the scale and the "Max:" label.
+  // The largest value is often INSIDE the span (a simply supported beam has zero
+  // end moments), so the stations are sampled first, the neighbourhood of the
+  // largest one is refined, and both sides of a point load / moment are checked.
+  let maxV=0;
+  const VALS=elems.map((_,i)=>{
+    const L=ED[i].L, ml=ED[i].ml, a=[];
+    for(let k=0;k<=nPts;k++) a.push(ordinate(i,k/nPts*L));
+    let kb=0;
+    for(let k=1;k<=nPts;k++) if(Math.abs(a[k])>Math.abs(a[kb])) kb=k;
+    let lo=Math.max(kb-1,0)/nPts*L, hi=Math.min(kb+1,nPts)/nPts*L;
+    for(let it=0;it<60;it++){
+      const m1=lo+(hi-lo)/3, m2=hi-(hi-lo)/3;
+      if(Math.abs(ordinate(i,m1))<Math.abs(ordinate(i,m2))) lo=m1; else hi=m2;
+    }
+    let pk=Math.max(Math.abs(a[kb]),Math.abs(ordinate(i,(lo+hi)/2)));
+    if(ml&&(ml[1]===1||ml[1]===2)&&ml[3]>0&&ml[3]<L)
+      pk=Math.max(pk,Math.abs(ordinate(i,ml[3])),Math.abs(ordinate(i,ml[3]+L*1e-9)));
+    maxV=Math.max(maxV,pk);
+    return a;
+  });
   if(maxV<1e-8){
     ctx.fillStyle='#8090A0'; ctx.font=`${PF(14)}px Barlow,sans-serif`;
     ctx.fillText('All values are zero.',20,60); return;
@@ -1638,7 +1723,6 @@ function drawDiagram(type){
   for(let i=0;i<elems.length;i++){
     const el=elems[i], ed=ED[i], er=ER[i];
     const {xs,ys,xe,ye,L,cosE,sinE,ml}=ed;
-    const nPts=60;
     const pBase=[], pTop=[];
 
     for(let k=0;k<=nPts;k++){
@@ -1646,49 +1730,7 @@ function drawDiagram(type){
       const pt0=p(xs+xL*cosE, ys+xL*sinE);
       pBase.push([pt0.x,pt0.y]);
 
-      let val=0;
-      if(type==='axial'){
-        val=er.fl[0]*(1-xi)+(-er.fl[3])*xi; // linear interpolation axial
-        if(ml&&(ml[1]===6||ml[1]===7)){
-          // uniform axial load over 0..av -> N is bilinear, not linear
-          const wA=(ml[1]===7)?ml[2]*Math.abs(cosE):ml[2];
-          const apA=(ml[1]===7&&Math.abs(cosE)>1e-12)?ml[3]/Math.abs(cosE):ml[3];
-          const px=-wA*sinE, av=(ml[3]===0)?L:Math.min(Math.max(apA,0),L);
-          val=er.fl[0]+px*Math.min(xL,av);
-        }
-      } else if(type==='shear'){
-        // shear varies with member loads
-        val=er.fl[1]; // Fy at i-end (local)
-        if(ml){
-          if(ml[1]===3){ const q=ml[2],av=ml[3]===0?L:ml[3]; if(xL<=av) val=er.fl[1]+q*xL; else val=er.fl[1]+q*av; }
-          else if(ml[1]===1){ const a=ml[3]; if(xL>a) val=er.fl[1]+ml[2]; }
-          else if(ml[1]===4){ const w=ml[2]; val=er.fl[1]+w*xL*xL/(2*L); }
-          else if(ml[1]===5){ const w=ml[2]; val=er.fl[1]+w*xL-w*xL*xL/(2*L); }
-          else if(ml[1]===6||ml[1]===7){
-            const wA=(ml[1]===7)?ml[2]*Math.abs(cosE):ml[2];
-            const apA=(ml[1]===7&&Math.abs(cosE)>1e-12)?ml[3]/Math.abs(cosE):ml[3];
-            const wp=wA*cosE, av=(ml[3]===0)?L:Math.min(Math.max(apA,0),L);
-            val=er.fl[1]+wp*Math.min(xL,av); }
-        }
-        // MATLAB: offset = -Fy_local * scale * perp
-        val=-val; // per MATLAB sign: -Fy_local * perp
-      } else {
-        // moment: M(x) = Mz_start + Fy_start * x + ...
-        val=er.fl[2]+er.fl[1]*xL;
-        if(ml){
-          if(ml[1]===3){ const q=ml[2],av=ml[3]===0?L:ml[3]; val+=xL<=av?0.5*q*xL**2:0.5*q*av**2+(q*av)*(xL-av); }
-          else if(ml[1]===1){ const Fz=ml[2],a=ml[3]; if(xL>a) val+=Fz*(xL-a); }
-          else if(ml[1]===2){ const Mm=ml[2],a=ml[3]; if(xL>a) val+=Mm; }
-          else if(ml[1]===4){ const w=ml[2]; val+=w*xL**3/(6*L); }
-          else if(ml[1]===5){ const w=ml[2]; val+=w*xL*xL/2-w*xL**3/(6*L); }
-          else if(ml[1]===6||ml[1]===7){
-            const wA=(ml[1]===7)?ml[2]*Math.abs(cosE):ml[2];
-            const apA=(ml[1]===7&&Math.abs(cosE)>1e-12)?ml[3]/Math.abs(cosE):ml[3];
-            const wp=wA*cosE, av=(ml[3]===0)?L:Math.min(Math.max(apA,0),L);
-            val+=(xL<=av)?0.5*wp*xL*xL:0.5*wp*av*av+(wp*av)*(xL-av); }
-        }
-        // MATLAB: offset = +Mz * scale * perp
-      }
+      const val=VALS[i][k];
 
       // Compute canvas offset using perpDelta
       const {dx,dy}=perpDelta(val,diagSc,cosE,sinE,1);
@@ -1781,11 +1823,11 @@ function checkLoadParams(){
       if(ap<=0||ap>=L) w.push(`${id}: point load at a_param=${r(ap)} is not inside the member `+
                                `(0 < a < ${r(L)}) \u2014 load IGNORED`);
     } else if(t===3||t===6){
-      if(ap<0||ap>L) w.push(`${id}: a_param=${r(ap)} outside 0\u2026${r(L)} m along the member \u2014 clamped`);
+      if(ap<0||ap>L) w.push(`${id}: a_param=${r(ap)} outside 0\u2026${r(L)} m along the member \u2014 full span used`);
     } else if(t===7){
       const Lx=Math.abs(dX);
       if(Lx<1e-10) w.push(`${id}: UDL_horiz on a vertical member has no horizontal projection \u2014 no load applied`);
-      else if(ap<0||ap>Lx) w.push(`${id}: a_param=${r(ap)} outside 0\u2026${r(Lx)} m horizontally \u2014 clamped`);
+      else if(ap<0||ap>Lx) w.push(`${id}: a_param=${r(ap)} outside 0\u2026${r(Lx)} m horizontally \u2014 full span used`);
     } else if(t===4||t===5){
       if(ap!==0) w.push(`${id}: triangular loads span the full member \u2014 a_param=${r(ap)} ignored`);
     }
@@ -1866,7 +1908,7 @@ function doPrint() {
   let body=`
 <div class="ph">
   <div class="pr">Özgür Yurdakul &nbsp;|&nbsp; University of Pardubice<br>${dtStr}</div>
-  <h1>FrameAnalysisGUI &nbsp; v3.1</h1>
+  <h1>FrameAnalysisGUI &nbsp; v4.0</h1>
   <p>2D Frame Analysis &nbsp;&middot;&nbsp; Direct Stiffness Method &nbsp;&middot;&nbsp; Linear-Elastic Static</p>
   <p class="sub">Units: kN, m, kN&middot;m &nbsp;|&nbsp; Sign convention: v&darr; downward positive, &theta; counter-clockwise positive</p>
 </div>
@@ -1875,7 +1917,7 @@ function doPrint() {
 <table class="layout"><tr>
   <td><b>Nodes</b><br>${pTbl(['#','X [m]','Y [m]'],ST.nodes.map(n=>[n[0],n[1],n[2]]))}</td>
   <td><b>Elements</b><br>${pTbl(['#','Node i','Node j','Prop ID','Release'],ST.elems.map(e=>[e[0],e[1],e[2],e[3],labelOf(OPT_REL,e[4])]))}</td>
-  <td><b>Materials</b><br>${pTbl(['#','A [m&sup2;]','I [m&sup4;]','E [kPa]'],ST.mats.map(m=>[m[0],fN(m[1]),fN(m[2]),fN(m[3])]))}</td>
+  <td><b>Materials</b><br>${pTbl(['#','A [m&sup2;]','I [m&#8308;]','E [kPa]'],ST.mats.map(m=>[m[0],fN(m[1]),fN(m[2]),fN(m[3])]))}</td>
 </tr></table>
 <table class="layout"><tr>
   <td><b>Supports</b><br>${pTbl(['Node','Dx','Dy','Rz'],ST.sups.map(s=>[s[0],labelOf(OPT_FIX,s[1]),labelOf(OPT_FIX,s[2]),labelOf(OPT_FIX,s[3])]))}</td>
