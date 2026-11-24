@@ -1,0 +1,1689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mander Moment-Curvature N-M</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Barlow:wght@400;500;600;700&display=swap');
+:root {
+  --bg:#161b26; --panel:#1e2535; --panel2:#252d40;
+  --border:#2e3a52; --accent:#4285f4; --green:#34c77b;
+  --warn:#f55f4e; --amber:#f0b44c; --txt:#e8edf5; --txt2:#8a97b0; --txt3:#5a6680;
+  --mono:'JetBrains Mono',monospace; --sans:'Barlow',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--txt);font-family:var(--sans);font-size:13px}
+
+/* ── top bar ── */
+#topbar{
+  background:var(--panel);border-bottom:1px solid var(--border);
+  padding:10px 20px;display:flex;align-items:center;gap:14px;
+  position:sticky;top:0;z-index:200;
+}
+#topbar h1{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--accent)}
+#topbar span{font-size:11px;color:var(--txt3);font-family:var(--mono)}
+
+/* ── two-column layout: both cols fill viewport and scroll independently ── */
+#layout{display:flex;height:calc(100vh - 41px);overflow:hidden}
+
+/* ── LEFT: independent scroll column ── */
+#sidebar{
+  width:470px;min-width:470px;flex-shrink:0;height:100%;overflow-y:auto;
+  background:var(--panel);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+}
+.sec{border-bottom:1px solid var(--border);padding:12px 14px;flex-shrink:0}
+.sec-title{
+  font-family:var(--mono);font-size:10px;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:10px
+}
+.sec.hide{display:none}
+.subttl{
+  font-family:var(--mono);font-size:11px;font-weight:700;color:var(--txt);letter-spacing:.02em;
+  border-left:2px solid var(--accent);padding-left:7px;margin:12px 0 6px
+}
+#runSec{position:sticky;bottom:0;z-index:4;background:var(--panel);border-top:1px solid var(--border);box-shadow:0 -6px 14px rgba(0,0,0,.28)}
+#btnRun.pending{outline:2px solid var(--amber);outline-offset:2px}
+#runHint.pending{color:var(--amber)}
+
+/* ── RIGHT: independent scroll column ── */
+#results{flex:1;min-width:0;height:100%;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:16px}
+
+/* ── form elements ── */
+label{font-size:11px;color:var(--txt2);display:block;margin-bottom:3px}
+input[type=number],input[type=text],select{
+  background:var(--bg);border:1px solid var(--border);color:var(--txt);
+  font-family:var(--mono);font-size:11px;padding:4px 7px;border-radius:4px;
+  width:100%;outline:none;transition:border-color .15s
+}
+input:focus,select:focus{border-color:var(--accent)}
+input:disabled,select:disabled{color:var(--txt3);background:var(--panel2);cursor:not-allowed}
+select option{background:var(--panel2)}
+.sagrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.sagrid .full{grid-column:1 / -1}
+
+/* ── bar tables ── */
+.vtbl{width:100%;border-collapse:collapse;font-size:11px;font-family:var(--mono)}
+.vtbl th{
+  background:var(--panel2);color:var(--txt2);font-size:10px;letter-spacing:.05em;text-transform:uppercase;
+  padding:5px 5px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap
+}
+.vtbl td{padding:3px 3px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--txt2)}
+.vtbl .na{font-size:10px;color:var(--amber);margin-left:4px}
+.vtbl tr:last-child td{border-bottom:none}
+.vtbl input{padding:3px 4px;font-size:11px}
+.vtbl input[type=checkbox]{accent-color:var(--accent);width:13px;height:13px}
+
+/* ── buttons ── */
+.btn{
+  display:inline-flex;align-items:center;gap:5px;padding:6px 13px;border-radius:4px;border:none;
+  font-family:var(--sans);font-size:12px;font-weight:600;cursor:pointer;transition:opacity .15s
+}
+.btn:hover{opacity:.85}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-blue{background:var(--accent);color:#fff}
+.btn-gray{background:var(--panel2);color:var(--txt2);border:1px solid var(--border)}
+.btn-green{background:var(--green);color:#0d1f16}
+.btn-sm{padding:4px 10px;font-size:11px}
+.btn-row{display:flex;gap:7px;flex-wrap:wrap}
+
+/* ── hint ── */
+.hint{font-size:10px;color:var(--txt3);font-family:var(--mono);margin-top:5px;line-height:1.5}
+
+/* ── checkboxes ── */
+.chkrow{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--txt2);cursor:pointer;margin:4px 0 6px}
+.chkrow input{accent-color:var(--accent);width:13px;height:13px}
+
+/* ── status bar ── */
+#statusbar{
+  position:sticky;top:0;z-index:5;border-bottom:1px solid var(--border);padding:8px 14px;background:var(--panel);
+  font-family:var(--mono);font-size:11px;color:var(--txt2);line-height:1.45;
+  display:flex;align-items:flex-start;gap:8px;flex-shrink:0
+}
+#statusbar .dot{width:7px;height:7px;border-radius:50%;background:var(--txt3);flex-shrink:0;margin-top:4px}
+#statusbar.err{background:#3a1f22;color:#ffb4a8;border-bottom-color:var(--warn)}
+#statusbar.ok{color:var(--txt)}
+#statusbar.warn{color:#f6d79a}
+#statusbar.stale{color:var(--amber)}
+#statusbar.stale .dot{background:var(--amber)}
+#statusbar.running .dot{background:var(--accent);animation:pulse 1s infinite}
+#statusbar.ok .dot{background:var(--green)}
+#statusbar.warn .dot{background:var(--amber)}
+#statusbar.err .dot{background:var(--warn)}
+#stxt{white-space:pre-line}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── RESULTS: tabs ── */
+.tabbar{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:14px;flex-wrap:wrap}
+.tab{padding:8px 14px;font-size:11px;font-family:var(--mono);font-weight:600;color:var(--txt3);cursor:pointer;
+     border-bottom:2px solid transparent;white-space:nowrap}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab:hover:not(.active){color:var(--txt2)}
+.tabpanel{display:none}.tabpanel.active{display:block}
+
+/* ── cards ── */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:7px;padding:14px;margin-bottom:14px}
+.card h3{font-family:var(--mono);font-size:10px;color:var(--txt2);margin-bottom:10px;letter-spacing:.06em;text-transform:uppercase}
+.card .sub{font-family:var(--mono);font-size:11px;color:var(--txt);margin:-4px 0 10px;line-height:1.5}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.chartbox{position:relative;height:340px}
+.chartbox.tall{height:470px}
+#secCanvasWrap{position:relative;height:340px}
+#secCanvas{width:100%;height:100%;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px;font-family:var(--mono);font-size:10px;color:var(--txt2)}
+.legend i{display:inline-block;width:14px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.legend i.dash{height:0;border-top:2px dashed var(--accent);border-radius:0;vertical-align:3px}
+
+/* ── result tables ── */
+.stbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px}
+.stbl th{background:var(--panel2);color:var(--accent);padding:7px 10px;text-align:left;border:1px solid var(--border);
+         font-size:10px;letter-spacing:.05em}
+.stbl td{padding:4px 10px;border:1px solid var(--border);color:var(--txt2)}
+.stbl td:nth-child(2){color:var(--txt);text-align:right;white-space:nowrap}
+.stbl td:nth-child(3){color:var(--txt3);white-space:nowrap}
+.stbl tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+.stbl tr.grp td{background:var(--panel2);color:var(--accent);font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:700}
+.wlist{font-family:var(--mono);font-size:11px;color:#f6d79a;line-height:1.7;list-style:none}
+.wlist li::before{content:'⚠ ';color:var(--amber)}
+.wlist.none li{color:var(--txt3)}.wlist.none li::before{content:''}
+
+/* ── help ── */
+.help{font-size:12px;color:var(--txt2);line-height:1.65;max-width:980px}
+.help h4{font-family:var(--mono);font-size:11px;color:var(--accent);margin:14px 0 6px;letter-spacing:.05em;text-transform:uppercase}
+.help ul{margin-left:18px}.help b{color:var(--txt)}
+.help code{font-family:var(--mono);font-size:11px;color:var(--txt);background:var(--panel2);padding:0 4px;border-radius:3px}
+
+/* ── toolbar ── */
+.toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.toolbar .stale{font-family:var(--mono);font-size:10px;color:var(--amber);margin-left:auto}
+.toolbar .tsep{width:1px;height:20px;background:var(--border);margin:0 2px}
+
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <h1>Confined Concrete · Moment–Curvature · N–M</h1>
+  <span>Mander_MomentCurvature_NM v1.0 · TA CR – SIGMA</span>
+  <span style="margin-left:auto;font-size:11px;color:var(--txt2);font-family:var(--mono)">Özgür Yurdakul  |  Faculty of Transport Engineering, University of Pardubice · CC BY-NC-SA 4.0</span>
+</div>
+
+<div id="layout">
+
+<!-- ══════════════════════════════════════ SIDEBAR ══════════════════════════ -->
+<div id="sidebar">
+
+  <div id="statusbar"><div class="dot"></div><span id="stxt">Ready.</span></div>
+
+  <div class="sec">
+    <div class="sec-title">Section</div>
+    <div class="sagrid">
+      <div><label>Section type</label>
+        <select id="type"><option>Circular</option><option selected>Rectangular</option></select></div>
+      <div><label>Transverse reinforcement</label>
+        <select id="trans"><option selected>Hoops</option><option>Spiral</option></select></div>
+      <div><label>Clear cover to hoop (mm)</label><input type="number" id="cover" value="25"></div>
+    </div>
+  </div>
+
+  <div class="sec" id="secCirc">
+    <div class="sec-title">Circular section</div>
+    <div class="sagrid">
+      <div><label>D – section diameter (mm)</label><input type="number" id="Dw" value="600"></div>
+      <div><label>ds – core diameter, hoop c/l (mm)</label><input type="number" id="ds" value="542"></div>
+    </div>
+    <label class="chkrow"><input type="checkbox" id="coreAutoC" checked> ds = D − 2·cover − ø hoop (untick to enter your own)</label>
+    <div class="subttl">Longitudinal bars – groups (spread evenly round the circle)</div>
+    <table class="vtbl"><thead><tr><th>Group</th><th>No. of bars</th><th>ø (mm)</th></tr></thead><tbody id="tbC"></tbody></table>
+    <div class="btn-row" style="margin-top:8px">
+      <button class="btn btn-blue btn-sm" id="addC">+ Add group</button>
+      <button class="btn btn-gray btn-sm" id="remC">− Remove group</button>
+    </div>
+  </div>
+
+  <div class="sec" id="secRect">
+    <div class="sec-title">Rectangular section</div>
+    <div class="sagrid">
+      <div><label>b – section width, x (mm)</label><input type="number" id="bw" value="300"></div>
+      <div><label>h – section depth, y (mm)</label><input type="number" id="hw" value="500"></div>
+      <div><label>bo – core width, hoop c/l (mm)</label><input type="number" id="bo" value="242"></div>
+      <div><label>ho – core depth, hoop c/l (mm)</label><input type="number" id="ho" value="442"></div>
+    </div>
+    <label class="chkrow"><input type="checkbox" id="coreAutoR" checked> bo, ho = b, h − 2·cover − ø hoop (untick to enter your own)</label>
+    <div class="subttl">Longitudinal bars – lines, top → bottom</div>
+    <table class="vtbl"><thead><tr><th>Line</th><th>No. of bars</th><th>ø (mm)</th><th>Cross-tie</th></tr></thead><tbody id="tbR"></tbody></table>
+    <div class="btn-row" style="margin-top:8px">
+      <button class="btn btn-blue btn-sm" id="addR">+ Add line</button>
+      <button class="btn btn-gray btn-sm" id="remR">− Remove line</button>
+    </div>
+    <div class="hint">Top and bottom lines are held by the perimeter hoop. Tick Cross-tie for a middle line whose side bars carry a horizontal tie.</div>
+    <div class="subttl">Vertical ties, left → right (at inner top-line bars)</div>
+    <table class="vtbl"><thead><tr><th>Top-line bar</th><th>x (mm)</th><th>Vertical tie</th></tr></thead><tbody id="tbV"></tbody></table>
+    <div class="sagrid" style="margin-top:8px">
+      <div><label>Legs parallel to x (hoop + ties)</label><input type="number" id="nlx" value="2" disabled></div>
+      <div><label>Legs parallel to y (hoop + ties)</label><input type="number" id="nly" value="2" disabled></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">Concrete</div>
+    <div class="sagrid">
+      <div><label>fco – unconfined strength (MPa)</label><input type="number" id="fco" value="30"></div>
+      <div><label>εco – strain at fco</label><input type="number" id="eco" value="0.002" step="0.0001"></div>
+      <div><label>εcu – ultimate strain, unconfined</label><input type="number" id="ecu0" value="0.0035" step="0.0001"></div>
+      <div><label>Ec (MPa)</label><input type="number" id="Ec" value="27386"></div>
+    </div>
+    <label class="chkrow"><input type="checkbox" id="EcAuto" checked> Ec = 5000√fco</label>
+    <div class="subttl">Confined ultimate strain εcu,c</div>
+    <div class="sagrid">
+      <div class="full"><label>Method</label>
+        <select id="ecuMethod"><option selected>Priestley (1996)</option><option>Energy balance</option><option>User-defined</option></select></div>
+      <div><label>Usf – hoop fracture energy (MJ/m³)</label><input type="number" id="Usf" value="110"></div>
+      <div><label>εcu,c – user value</label><input type="number" id="ecuUser" value="0.015" step="0.001"></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">Longitudinal steel</div>
+    <div class="sagrid">
+      <div class="full"><label>Model</label>
+        <select id="steelModel"><option>Elastic-perfectly plastic</option><option>Bilinear hardening</option><option selected>Mander (1984)</option></select></div>
+      <div><label>Es – elastic modulus (MPa)</label><input type="number" id="Es" value="200000"></div>
+      <div><label>fy – yield strength (MPa)</label><input type="number" id="fy" value="420"></div>
+      <div><label>fu – tensile strength (MPa)</label><input type="number" id="fu" value="483"></div>
+      <div><label>εsh – start of hardening</label><input type="number" id="esh" value="0.008" step="0.001"></div>
+      <div><label>Esh – hardening modulus (MPa)</label><input type="number" id="Esh" value="1750"></div>
+      <div><label>εsu – strain at fu</label><input type="number" id="esu" value="0.08" step="0.01"></div>
+    </div>
+    <div class="hint">Mander (1984): fs = fu + (fy − fu)·((εsu − εs)/(εsu − εsh))^P, P = Esh(εsu − εsh)/(fu − fy). P = 2 (XTRACT parabolic hardening) for Esh = 2(fu − fy)/(εsu − εsh).</div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">Transverse steel</div>
+    <div class="sagrid">
+      <div><label>ø hoop / spiral / ties (mm)</label><input type="number" id="dbh" value="8"></div>
+      <div><label>s – centre-to-centre spacing (mm)</label><input type="number" id="s" value="200"></div>
+      <div><label>fyh – yield strength (MPa)</label><input type="number" id="fyh" value="420"></div>
+      <div><label>εsuh – strain at max. stress</label><input type="number" id="esuh" value="0.08" step="0.01"></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">Moment–curvature (top fibre in compression)</div>
+    <div class="sagrid">
+      <div><label>N – axial load, compression + (kN)</label><input type="number" id="Nax" value="450"></div>
+      <div><label>Concrete</label>
+        <select id="mcConcrete"><option selected>Confined core + cover</option><option>Unconfined section</option></select></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <div class="sec-title">N–M interaction</div>
+    <div class="sagrid">
+      <div class="full"><label>Method</label>
+        <select id="nmMethod"><option selected>From M-phi (Mander)</option><option>Strain compatibility</option><option>EC2 design</option><option>Compare all three</option></select></div>
+      <div><label>εc,lim – strain comp., extreme fibre</label><input type="number" id="ecLim" value="0.0035" step="0.0001"></div>
+      <div><label>γc – EC2 concrete factor</label><input type="number" id="gc" value="1.5" step="0.05"></div>
+      <div><label>γs – EC2 steel factor</label><input type="number" id="gs" value="1.15" step="0.05"></div>
+      <div><label>αcc – EC2 long-term factor</label><input type="number" id="acc" value="1.0" step="0.05"></div>
+    </div>
+  </div>
+
+  <div class="sec" id="runSec">
+    <button class="btn btn-green" id="btnRun" style="width:100%;justify-content:center;font-size:14px;padding:10px">▶  COMPUTE</button>
+    <div class="hint" id="runHint" style="text-align:center">Change the inputs, then press COMPUTE.</div>
+  </div>
+
+  <!-- Acknowledgement -->
+  <div class="sec">
+    <div class="sec-title">Acknowledgement</div>
+    <div style="background:#1a2a4a;border:1px solid #3a5080;border-radius:5px;padding:7px 10px;margin-bottom:8px;font-size:11px;color:#a8c0e8;display:flex;align-items:center;gap:9px;">
+      <span style="font-size:18px;flex-shrink:0">🇨🇿</span>
+      <span><strong style="color:#d0e4ff">TA CR – SIGMA / M.ERA-NET Cofund</strong><br style="margin-bottom:2px">Technology Agency of the Czech Republic</span>
+    </div>
+    <div style="font-size:11px;color:var(--txt2);line-height:1.65;margin-bottom:10px;">
+      This tool was developed within the framework of a project co-financed from the state budget by the
+      <strong style="color:var(--txt)">Technology Agency of the Czech Republic</strong> under the
+      <strong style="color:var(--txt)">SIGMA Programme</strong> within the
+      <strong style="color:var(--txt)">M.ERA-NET Cofund</strong>.
+    </div>
+    <div class="sec-title" style="margin-top:4px">Citation</div>
+    <div style="font-size:11px;color:var(--txt2);line-height:1.65;font-style:italic;margin-bottom:4px;">
+      Yurdakul, Özgür (2026). <em>Mander_MomentCurvature_NM: A web-based confined concrete, moment–curvature and N–M interaction tool.</em>
+      Faculty of Transport Engineering, University of Pardubice.
+      <a href="https://ozguryurdakul.github.io/educationaltools/Mander_MomentCurvature_NM.html"
+         style="color:var(--accent);word-break:break-all;font-style:normal;font-weight:600;" target="_blank" rel="noopener">
+         https://ozguryurdakul.github.io/educationaltools/Mander_MomentCurvature_NM.html</a>
+    </div>
+    <div style="font-size:10px;color:var(--txt3);margin-top:2px;">CC BY-NC-SA 4.0</div>
+  </div>
+
+  <div style="padding:6px 14px;font-size:10px;color:var(--txt3);border-top:1px solid var(--border);text-align:center;flex-shrink:0;margin-top:auto">
+    Özgür Yurdakul  |  Faculty of Transport Engineering, University of Pardubice · CC BY-NC-SA 4.0
+  </div>
+</div>
+<!-- end sidebar -->
+
+<!-- ══════════════════════════════════════ RESULTS ══════════════════════════ -->
+<div id="results">
+  <div class="toolbar">
+    <button class="btn btn-blue btn-sm" id="btnSaveP" title="Save all inputs to a project file (.json)">💾 Save Project</button>
+    <button class="btn btn-blue btn-sm" id="btnOpenP" title="Load the inputs from a project file">📂 Open Project</button>
+    <input type="file" id="fileOpenP" accept=".json,application/json" style="display:none">
+    <span class="tsep"></span>
+    <button class="btn btn-gray btn-sm" id="btnPng">🖼 Save Figures (PNG)</button>
+    <button class="btn btn-gray btn-sm" id="btnXls">📊 Export Excel</button>
+    <button class="btn btn-gray btn-sm" id="btnJson">📄 Export JSON</button>
+    <span class="stale" id="staleRes"></span>
+  </div>
+
+  <div>
+  <div class="tabbar">
+    <div class="tab active" data-tab="0">Section &amp; Materials</div>
+    <div class="tab" data-tab="1">Moment–Curvature</div>
+    <div class="tab" data-tab="2">N–M Interaction</div>
+    <div class="tab" data-tab="3">Results Table</div>
+    <div class="tab" data-tab="4">Help</div>
+  </div>
+
+  <!-- Tab 0 -->
+  <div class="tabpanel active" id="tp0">
+    <div class="grid2">
+      <div class="card"><h3>Cross-section</h3><div class="sub" id="secTitle"></div>
+        <div id="secCanvasWrap"><canvas id="secCanvas"></canvas></div>
+        <div class="legend" id="secLegend"></div>
+      </div>
+      <div class="card"><h3>Concrete stress–strain</h3><div class="sub" id="cTitle"></div><div class="chartbox"><canvas id="chC"></canvas></div></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h3>Reinforcement stress–strain</h3><div class="sub" id="sTitle"></div><div class="chartbox"><canvas id="chS"></canvas></div></div>
+      <div class="card"><h3>Confinement summary</h3><table class="stbl" id="tblConf"></table></div>
+    </div>
+  </div>
+
+  <!-- Tab 1 -->
+  <div class="tabpanel" id="tp1">
+    <div class="card"><h3>Moment–curvature</h3><div class="sub" id="mTitle"></div><div class="chartbox tall"><canvas id="chM"></canvas></div></div>
+    <div class="card"><h3>Key points (Priestley, Calvi &amp; Kowalsky 2007)</h3><table class="stbl" id="tblMC"></table></div>
+  </div>
+
+  <!-- Tab 2 -->
+  <div class="tabpanel" id="tp2">
+    <div class="card"><h3>N–M interaction</h3><div class="sub" id="nmTitle"></div><div class="chartbox tall"><canvas id="chNM"></canvas></div></div>
+    <div class="card"><h3>Interaction summary</h3><table class="stbl" id="tblNM"></table></div>
+  </div>
+
+  <!-- Tab 3 -->
+  <div class="tabpanel" id="tp3">
+    <div class="card"><h3>Messages</h3><ul class="wlist" id="wlist"></ul></div>
+    <div class="card"><h3>All results</h3><table class="stbl" id="tblAll"></table></div>
+  </div>
+
+  <!-- Tab 4 -->
+  <div class="tabpanel" id="tp4">
+    <div class="card help">
+      <h4>What the tool does</h4>
+      <ul>
+        <li><b>Confined concrete</b> after Mander, Priestley &amp; Park (1988): confinement effectiveness k<sub>e</sub>, effective lateral pressures f′<sub>lx</sub>, f′<sub>ly</sub>, confined strength f<sub>cc</sub> from the five-parameter William–Warnke surface (equal and unequal confinement), stress–strain curve (Eq. 3) and ultimate strain ε<sub>cu,c</sub>.</li>
+        <li><b>Moment–curvature</b> of the fibre section (200 strips + bars) under a constant axial load N, top fibre in compression.</li>
+        <li><b>N–M interaction</b> by three methods, both bending directions.</li>
+      </ul>
+      <h4>Working with the tool</h4>
+      <ul>
+        <li>Enter the inputs and press <b>COMPUTE</b>: material curves, moment–curvature and N–M are calculated together. Until then the status bar and the button show that the results belong to the previous inputs.</li>
+        <li>The cross-section drawing follows the inputs immediately, so the bar layout and ties can be checked before computing.</li>
+        <li><b>Save Project</b> writes all inputs (bar tables and ties included) to a .json file; <b>Open Project</b> reads it back, then press COMPUTE.</li>
+        <li>Export Excel / JSON and Save Figures always give the results of the last COMPUTE.</li>
+      </ul>
+      <h4>Units and signs</h4>
+      <ul>
+        <li>Input in <b>MPa and mm</b>; section results in <b>kN, kNm and 1/m</b>.</li>
+        <li>Axial load N is <b>positive in compression</b>. Positive moment puts the top fibre in compression.</li>
+      </ul>
+      <h4>Section and confinement</h4>
+      <ul>
+        <li>The confined core is measured to the <b>hoop centreline</b> (Mander 1988, Appendix II): b<sub>o</sub> = b − 2·cover − ø<sub>hoop</sub>, h<sub>o</sub> = h − 2·cover − ø<sub>hoop</sub>, d<sub>s</sub> = D − 2·cover − ø<sub>hoop</sub>. Untick the box to enter your own values.</li>
+        <li>k<sub>e</sub> (Eq. 22) uses the clear spacings w′ between <b>laterally restrained bars</b> only: corners, bars of a tied middle line, and top/bottom bars on a vertical tie. Untied bars are drawn grey and the arch spans past them.</li>
+        <li>A vertical tie must hook a bar at both ends, so it is possible only at an inner top-line bar that has an inner bottom-line bar at the same x (e.g. 5 bars on top and 3 at the bottom: only the middle tie). The other rows of the vertical-tie table are locked (“no bottom bar”).</li>
+        <li>Ties have the hoop diameter. Bar lines are evenly spaced from top to bottom.</li>
+      </ul>
+      <h4>Materials</h4>
+      <ul>
+        <li><b>Unconfined (cover) concrete:</b> Mander curve up to ε<sub>cu</sub>; if ε<sub>cu</sub> &gt; 2ε<sub>co</sub> it descends linearly to zero between 2ε<sub>co</sub> and ε<sub>cu</sub>, otherwise it drops to zero at ε<sub>cu</sub> (spalling).</li>
+        <li><b>Confined ultimate strain:</b> Priestley et al. (1996) ε<sub>cu,c</sub> = 0.004 + 1.4ρ<sub>s</sub>f<sub>yh</sub>ε<sub>suh</sub>/f<sub>cc</sub>, Mander's energy balance (U<sub>sf</sub>ρ<sub>s</sub> = ∫f<sub>c</sub>dε + ρ<sub>cc</sub>∫f<sub>sl</sub>dε − 0.017√f<sub>co</sub>; 110 MJ/m³ is Mander's value for mild-steel hoops), or a user value.</li>
+        <li><b>Reinforcement:</b> elastic–perfectly plastic, bilinear hardening, or Mander (1984) with a yield plateau to ε<sub>sh</sub>.</li>
+      </ul>
+      <h4>Moment–curvature</h4>
+      <ul>
+        <li>The extreme compression fibre strain is increased step by step; the neutral-axis depth follows from axial equilibrium and φ = ε<sub>top</sub>/c.</li>
+        <li><b>Confined core + cover:</b> confined Mander curve in the core, unconfined curve in the cover (it spalls at ε<sub>cu</sub>); ultimate when the extreme <b>core</b> fibre reaches ε<sub>cu,c</sub>. <b>Unconfined section</b> (also used automatically when k<sub>e</sub> = 0): unconfined curve everywhere; ultimate when the extreme <b>section</b> fibre reaches ε<sub>cu</sub>. Both also stop when the extreme tension bar reaches ε<sub>su</sub>. Concrete in tension is ignored.</li>
+        <li>Key points (Priestley, Calvi &amp; Kowalsky 2007): first yield (tension bar at ε<sub>y</sub> or concrete at 0.002), nominal M<sub>n</sub> (concrete at 0.004 or tension bar at 0.015), φ<sub>y</sub> = φ′<sub>y</sub>·M<sub>n</sub>/M′<sub>y</sub>, μ<sub>φ</sub> = φ<sub>u</sub>/φ<sub>y</sub>.</li>
+      </ul>
+      <h4>N–M interaction</h4>
+      <ul>
+        <li><b>From M–φ (Mander):</b> M<sub>max</sub>, M<sub>n</sub> and M′<sub>y</sub> of the moment–curvature analysis for about 23 axial loads.</li>
+        <li><b>Strain compatibility:</b> Mander laws of the M–φ option; extreme fibre at ε<sub>c,lim</sub> or extreme tension bar at ε<sub>su</sub>; a fully compressed section turns about the strain of the peak axial load.</li>
+        <li><b>EC2 design:</b> parabola-rectangle concrete (f<sub>cd</sub> = α<sub>cc</sub>f<sub>ck</sub>/γ<sub>c</sub>, with f<sub>ck</sub> = f<sub>co</sub>), bilinear steel f<sub>yd</sub> = f<sub>y</sub>/γ<sub>s</sub>, pivots B and C of EN 1992-1-1. The minimum eccentricity (6.1(4)) is not applied.</li>
+      </ul>
+      <h4>Limitations</h4>
+      <ul>
+        <li>Uniaxial bending about one axis, monotonic loading; no bar buckling, shear or cyclic behaviour.</li>
+      </ul>
+      <h4>References</h4>
+      <ul>
+        <li>Mander J.B., Priestley M.J.N., Park R. (1988). Theoretical stress-strain model for confined concrete. <i>J. Struct. Eng.</i> 114(8), 1804–1826.</li>
+        <li>Mander J.B. (1984). Seismic design of bridge piers. PhD thesis, University of Canterbury.</li>
+        <li>Priestley M.J.N., Seible F., Calvi G.M. (1996). <i>Seismic Design and Retrofit of Bridges.</i> Wiley.</li>
+        <li>Priestley M.J.N., Calvi G.M., Kowalsky M.J. (2007). <i>Displacement-Based Seismic Design of Structures.</i> IUSS Press.</li>
+        <li>EN 1992-1-1 (2004). Eurocode 2: Design of concrete structures.</li>
+      </ul>
+    </div>
+  </div>
+  </div>
+</div>
+</div>
+
+<script>
+/* ===ENGINE START=== */
+/* Calculation engine: line-by-line port of Mander_MomentCurvature_NM_GUI.m
+   (v1.0). Pure functions, no DOM access. Units N, mm, MPa inside;
+   kN, kNm, 1/m for the section results. */
+const Engine = (function () {
+'use strict';
+const PI = Math.PI;
+const err = m => new Error(m);
+const g6 = x => String(+(+x).toPrecision(6));           // MATLAB %g
+function lin(a, b, n) {
+  const v = new Array(n);
+  if (n === 1) { v[0] = b; return v; }
+  const d = (b - a) / (n - 1);
+  for (let i = 0; i < n; i++) v[i] = a + i * d;
+  v[n - 1] = b;
+  return v;
+}
+const sum = a => { let s = 0; for (const x of a) s += x; return s; };
+function argmax(a) { let m = -Infinity, j = 0; for (let i = 0; i < a.length; i++) if (a[i] > m) { m = a[i]; j = i; } return [m, j]; }
+const maxOf = a => { let m = -Infinity; for (const x of a) if (x > m) m = x; return m; };
+const minOf = a => { let m = Infinity; for (const x of a) if (x < m) m = x; return m; };
+function rows(T) {                          // [[n,d],...] (also accepts one row [n,d])
+  if (!Array.isArray(T) || !T.length) return [];
+  return Array.isArray(T[0]) ? T : [T];
+}
+function bools(x) { if (x === undefined || x === null) return []; return Array.isArray(x) ? x.map(Boolean) : [Boolean(x)]; }
+function uniqueSorted(a) {                  // MATLAB unique: sorted values, first occurrence
+  const idx = a.map((v, i) => i).sort((i, j) => a[i] - a[j] || i - j);
+  const v = [], ia = [];
+  for (const i of idx) if (!v.length || a[i] !== v[v.length - 1]) { v.push(a[i]); ia.push(i); }
+  return [v, ia];
+}
+function interp1(x, y, xq) {                // linear, NaN outside
+  if (!(xq >= x[0] && xq <= x[x.length - 1])) return NaN;
+  let lo = 0, hi = x.length - 1;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (x[m] <= xq) lo = m; else hi = m; }
+  if (x[hi] === x[lo]) return y[lo];
+  return y[lo] + (y[hi] - y[lo]) * (xq - x[lo]) / (x[hi] - x[lo]);
+}
+
+/* ---------------------------------------------------------------- model */
+function manderModel(p) {
+  const W = [];
+  // every numeric input must be a finite number (bar tables are checked with a clearer message)
+  for (const k of Object.keys(p)) {
+    const v = p[k];
+    if (typeof v === 'number' && !Number.isFinite(v)) throw err(`The input "${k}" must be a finite number.`);
+  }
+  const fco = p.fco, eco = p.eco;
+  if (fco <= 0 || eco <= 0) throw err('fco and eco must be positive.');
+  if (p.ecu0 <= eco) throw err('Unconfined ecu must be larger than eco.');
+  if (p.ecu0 > 0.05) throw err(`Unconfined ecu = ${g6(p.ecu0)} is unrealistic (EC2: 0.0035, Mander spalling: 0.005-0.006).`);
+  if (p.s <= 0 || p.dbh <= 0) throw err('Hoop diameter and spacing must be positive.');
+  if (p.fyh <= 0 || p.esuh <= 0) throw err('fyh and esuh of the transverse steel must be positive.');
+  if (p.cover < 0) throw err('Clear cover must not be negative.');
+  checkCore(p);
+  const S = steelModel(p);
+  const G = sectionGeometry(p);
+  const Abh = PI * p.dbh ** 2 / 4;
+  const sp = p.s - p.dbh;                   // clear spacing between hoops
+  if (sp <= 0) throw err('Spacing s must exceed the hoop bar diameter.');
+  const rcc = G.rcc;
+  if (rcc >= 1) throw err('Longitudinal steel area exceeds the core area.');
+  let ke, rhos, rhox, rhoy, flx, fly;
+  if (p.type === 'Circular') {
+    const ds = p.ds;
+    rhos = 4 * Abh / (ds * p.s);
+    const fs_ = Math.max(1 - sp / (2 * ds), 0);
+    if (fs_ === 0) W.push("Clear spacing s' >= 2ds: no effectively confined core, ke = 0.");
+    ke = p.trans === 'Spiral' ? fs_ / (1 - rcc) : fs_ ** 2 / (1 - rcc);
+    rhox = NaN; rhoy = NaN;
+    const fl = 0.5 * ke * rhos * p.fyh;
+    flx = fl; fly = fl;
+  } else {
+    const bc = p.bc, dc = p.dc;
+    const fw = 1 - G.sumw2 / (6 * bc * dc);
+    const fsx = 1 - sp / (2 * bc), fsy = 1 - sp / (2 * dc);
+    if (fw <= 0) W.push("Arching between restrained bars covers the whole core (sum w'^2 >= 6 bc dc): ke = 0. Add ties.");
+    if (fsx <= 0 || fsy <= 0) W.push("Clear hoop spacing s' >= 2 x core size: ke = 0.");
+    ke = Math.max(fw, 0) * Math.max(fsx, 0) * Math.max(fsy, 0) / (1 - rcc);
+    if (G.tieDropped)
+      W.push(`${G.tieDropped} vertical tie(s) ignored: no bottom-line bar at the same x (a tie must hook a bar at both ends).`);
+    rhox = p.nlx * Abh / (p.s * dc);
+    rhoy = (2 + G.tieX.length) * Abh / (p.s * bc);   // hoop legs + effective vertical ties (= nly)
+    rhos = rhox + rhoy;
+    flx = ke * rhox * p.fyh;
+    fly = ke * rhoy * p.fyh;
+  }
+  if (Math.max(flx, fly) / fco > 0.3) W.push("fl/fco > 0.3: outside the range of Mander's confinement chart.");
+  const fcc = manderFcc(fco, flx, fly);
+  if (Math.abs(flx - fly) < 1e-9) {
+    const fl = flx;
+    const fccCF = fco * (-1.254 + 2.254 * Math.sqrt(1 + 7.94 * fl / fco) - 2 * fl / fco);
+    if (Math.abs(fcc - fccCF) / fccCF > 0.01)
+      W.push(`Failure surface gives fcc = ${fcc.toFixed(2)}, closed form ${fccCF.toFixed(2)} MPa.`);
+  }
+  const Ec = p.EcAuto ? 5000 * Math.sqrt(fco) : p.Ec;
+  const ecc = eco * (1 + 5 * (fcc / fco - 1));
+  const Esec = fcc / ecc;
+  if (Ec <= Esec) throw err(`Ec must be larger than Esec = fcc/ecc (${Esec.toFixed(0)} MPa).`);
+  const r = Ec / (Ec - Esec);
+  const Esec0 = fco / eco;
+  if (Ec <= Esec0) throw err(`Ec must be larger than fco/eco (${Esec0.toFixed(0)} MPa).`);
+  const r0 = Ec / (Ec - Esec0);
+  const fConf = e => fcc * (e / ecc) * r / (r - 1 + Math.pow(e / ecc, r));
+
+  // ultimate strain - Priestley et al. (1996)
+  const ecuP = 0.004 + 1.4 * rhos * p.fyh * p.esuh / fcc;
+  // ultimate strain - Mander energy balance
+  const eg = lin(0, 0.2, 40001);
+  const U = new Array(eg.length);
+  const Uco = 0.017 * Math.sqrt(fco);
+  let Ic = 0, Is = 0, fc0 = fConf(eg[0]), fs0 = steelStress(eg[0], S);
+  U[0] = -Uco;
+  for (let i = 1; i < eg.length; i++) {
+    const fc1 = fConf(eg[i]), fs1 = steelStress(eg[i], S), de = eg[i] - eg[i - 1];
+    Ic += de * (fc0 + fc1) / 2; Is += de * (fs0 + fs1) / 2;
+    U[i] = Ic + rcc * Is - Uco;
+    fc0 = fc1; fs0 = fs1;
+  }
+  if (p.Usf <= 0) throw err('Usf must be positive.');
+  const Ush = p.Usf * rhos;
+  if (p.ecuMethod === 'Energy balance' && p.Usf > 1.5 * p.fyh * p.esuh)
+    W.push(`Usf = ${g6(p.Usf)} MJ/m3 is Mander's value for mild-steel hoops; with fyh = ${g6(p.fyh)} MPa and esuh = ${g6(p.esuh)} the hoop energy is only about ${(p.fyh * p.esuh).toFixed(0)} MJ/m3 (fyh*esuh), so ecu,c may be overestimated.`);
+  let k = U.findIndex(u => u >= Ush), ecuE;
+  if (k < 0) { ecuE = NaN; W.push('Energy balance: no solution for ecu,c < 0.2.'); }
+  else if (k === 0) ecuE = 0;
+  else ecuE = eg[k - 1] + (Ush - U[k - 1]) * (eg[k] - eg[k - 1]) / (U[k] - U[k - 1]);
+  let ecu;
+  if (p.ecuMethod === 'Energy balance') {
+    if (Number.isNaN(ecuE)) { ecu = ecuP; W.push('Falling back to the Priestley ecu,c.'); } else ecu = ecuE;
+  } else if (p.ecuMethod === 'User-defined') {
+    if (p.ecuUser <= 0) throw err('User-defined ecu,c must be positive.');
+    ecu = p.ecuUser;
+  } else ecu = ecuP;
+  if (ke === 0 && p.ecuMethod !== 'User-defined') { ecu = p.ecu0; W.push('ke = 0: ecu,c set to the unconfined ecu.'); }
+  if (ecu < ecc) W.push('ecu,c is smaller than ecc: the curve stops before the peak.');
+  if (ecu > S.esu) W.push('ecu,c exceeds esu of the longitudinal bars.');
+  const fcu = fConf(ecu);
+  // curves
+  const eC = lin(0, ecu, 800), fC = eC.map(fConf);
+  const fUnc = e => fco * (e / eco) * r0 / (r0 - 1 + Math.pow(e / eco, r0));
+  const eU = lin(0, p.ecu0, 600), fU = eU.map(fUnc);
+  if (p.ecu0 > 2 * eco) {
+    const f2 = fUnc(2 * eco);
+    for (let i = 0; i < eU.length; i++) if (eU[i] > 2 * eco) fU[i] = f2 * (p.ecu0 - eU[i]) / (p.ecu0 - 2 * eco);
+  } else { eU.push(p.ecu0); fU.push(0); }
+  const R = { type: p.type, fco, eco, ecu0: p.ecu0, ke, rcc, rhos, rhox, rhoy, flx, fly, fcc, ecc, Ec, Esec, r,
+    ecuP, ecuE, ecu, fcu, bo: p.bc, ho: p.dc, ds: p.ds, r0, warnings: W };
+  const C = { e_conf: eC, f_conf: fC, e_unc: eU, f_unc: fU };
+  return { R, C, S, G };
+}
+
+function checkCore(p) {
+  if (p.type === 'Circular') {
+    if (p.ds <= 2 * p.dbh) throw err(`Core too small: ds = ${g6(p.ds)} mm.`);
+    if (p.ds + p.dbh > p.Dw + 1e-9) throw err(`Core ds + ø hoop = ${g6(p.ds + p.dbh)} mm does not fit in D = ${g6(p.Dw)} mm.`);
+  } else {
+    if (p.bc <= 2 * p.dbh || p.dc <= 2 * p.dbh) throw err(`Core too small: bo x ho = ${g6(p.bc)} x ${g6(p.dc)} mm.`);
+    if (p.bc + p.dbh > p.bw + 1e-9 || p.dc + p.dbh > p.hw + 1e-9)
+      throw err(`Core bo x ho + ø hoop does not fit in the ${g6(p.bw)} × ${g6(p.hw)} mm section.`);
+  }
+}
+
+// geometry only, for the cross-section preview while the inputs are edited
+function previewGeometry(p) {
+  const keys = ['cover', 'dbh', 's', ...(p.type === 'Circular' ? ['Dw', 'ds'] : ['bw', 'hw', 'bc', 'dc'])];
+  for (const k of keys) if (!Number.isFinite(p[k])) throw err(`The input "${k}" must be a finite number.`);
+  if (p.s <= 0 || p.dbh <= 0) throw err('Hoop diameter and spacing must be positive.');
+  if (p.cover < 0) throw err('Clear cover must not be negative.');
+  checkCore(p);
+  return sectionGeometry(p);
+}
+
+function sectionGeometry(p) {
+  const dh = p.dbh, G = {};
+  let X, Y, D, Xp, Yp, Dp, Rp, free, Acore;
+  if (p.type === 'Circular') {
+    const T = checkBarTable(rows(p.barsC), 'group', 1);
+    const n = sum(T.map(t => t[0]));
+    if (n < 4) throw err('At least 4 longitudinal bars are required.');
+    const items = [];
+    T.forEach(t => { for (let j = 1; j <= t[0]; j++) items.push({ pos: (j - 0.5) / t[0], d: t[1] }); });
+    items.sort((a, b) => a.pos - b.pos || b.d - a.d);   // sortrows([pos, -dia])
+    D = items.map(o => o.d);
+    X = []; Y = [];
+    for (let i = 0; i < n; i++) {
+      const th = PI / 2 - i * 2 * PI / n, Rb = p.ds / 2 - dh / 2 - D[i] / 2;
+      X.push(Rb * Math.cos(th)); Y.push(Rb * Math.sin(th));
+    }
+    Xp = X.slice(); Yp = Y.slice(); Dp = D.slice();
+    Rp = new Array(n).fill(true);
+    free = new Array(n).fill(false);
+    Acore = PI * p.ds ** 2 / 4;
+    G.lineY = []; G.lineD = []; G.lineN = []; G.xTop = []; G.tieX = [];
+  } else {
+    const T = checkBarTable(rows(p.barsR), 'line', 2);
+    const nl = T.length;
+    if (nl < 2) throw err('At least 2 bar lines (top and bottom) are required.');
+    const nb = T.map(t => t[0]), d = T.map(t => t[1]);
+    const tie = bools(p.tieR);
+    const xe = d.map(di => p.bc / 2 - dh / 2 - di / 2);
+    const yl = lin(p.dc / 2 - dh / 2 - d[0] / 2, -(p.dc / 2 - dh / 2 - d[nl - 1] / 2), nl);
+    const xTop = lin(-xe[0], xe[0], nb[0]);
+    const xBot = lin(xe[nl - 1], -xe[nl - 1], nb[nl - 1]);
+    const tvIn = bools(p.tieV), tv = new Array(nb[0] - 2).fill(false);
+    for (let i = 0; i < Math.min(tv.length, tvIn.length); i++) tv[i] = tvIn[i];
+    const inner = xTop.slice(1, -1);
+    const md = maxOf(d);
+    // a vertical tie must hook a bar at both ends: only where an inner
+    // bottom-line bar has the same x (within half a bar diameter)
+    const botIn = xBot.slice(1, -1);
+    const tieOK = inner.map(x => botIn.some(v => Math.abs(v - x) < md / 2));
+    const tieX = inner.filter((x, i) => tv[i] && tieOK[i]);
+    G.tieDropped = inner.filter((x, i) => tv[i] && !tieOK[i]).length;
+    const onTie = x => tieX.some(t => Math.abs(x - t) < md / 2);
+    const rTop = [true, ...xTop.slice(1, -1).map(onTie), true];
+    const rBot = [true, ...xBot.slice(1, -1).map(onTie), true];
+    X = []; Y = []; D = []; free = [];
+    for (let i = 0; i < nl; i++) {
+      const xi = lin(-xe[i], xe[i], nb[i]);
+      for (let j = 1; j < xi.length; j++) if (xi[j] - xi[j - 1] - d[i] <= 0)
+        throw err(`Bars in line ${i + 1} overlap: reduce the number or diameter.`);
+      let fi;
+      if (i === 0) fi = rTop.map(v => !v);
+      else if (i === nl - 1) fi = rBot.map(v => !v).reverse();
+      else fi = [!tie[i], ...new Array(nb[i] - 2).fill(false), !tie[i]];
+      X.push(...xi); Y.push(...new Array(nb[i]).fill(yl[i]));
+      D.push(...new Array(nb[i]).fill(d[i])); free.push(...fi);
+    }
+    const mid = []; for (let i = 1; i < nl - 1; i++) mid.push(i);
+    const midR = mid.slice().reverse();
+    Xp = [...xTop, ...mid.map(i => xe[i]), ...xBot, ...midR.map(i => -xe[i])];
+    Yp = [...new Array(nb[0]).fill(yl[0]), ...mid.map(i => yl[i]), ...new Array(nb[nl - 1]).fill(yl[nl - 1]), ...midR.map(i => yl[i])];
+    Dp = [...new Array(nb[0]).fill(d[0]), ...mid.map(i => d[i]), ...new Array(nb[nl - 1]).fill(d[nl - 1]), ...midR.map(i => d[i])];
+    Rp = [...rTop, ...mid.map(i => tie[i]), ...rBot, ...midR.map(i => tie[i])].map(Boolean);
+    Acore = p.bc * p.dc;
+    G.lineY = yl; G.lineD = d; G.lineN = nb; G.xTop = xTop; G.tieX = tieX;
+  }
+  // overlap check on all perimeter neighbours
+  const nP = Xp.length;
+  for (let i = 0; i < nP; i++) {
+    const j = (i + 1) % nP;
+    if (Math.hypot(Xp[j] - Xp[i], Yp[j] - Yp[i]) - (Dp[i] + Dp[j]) / 2 <= 0)
+      throw err('Longitudinal bars overlap: check bar counts and diameters.');
+  }
+  // arches between consecutive restrained bars
+  const xr = [], yr = [], dr = [];
+  for (let i = 0; i < nP; i++) if (Rp[i]) { xr.push(Xp[i]); yr.push(Yp[i]); dr.push(Dp[i]); }
+  const w = xr.map((x, i) => { const j = (i + 1) % xr.length; return Math.hypot(xr[j] - x, yr[j] - yr[i]) - (dr[i] + dr[j]) / 2; });
+  Object.assign(G, { X, Y, D, free, Xp: xr, Yp: yr, Dp: dr, w });
+  G.sumw2 = sum(w.map(v => v * v));
+  G.As = sum(D.map(v => PI * v * v / 4));
+  G.rcc = G.As / Acore;
+  return G;
+}
+
+function checkBarTable(T, what, nmin) {
+  if (!T.length || T.some(t => !Number.isFinite(t[0]) || !Number.isFinite(t[1])))
+    throw err(`Fill in the number of bars and the diameter for every ${what}.`);
+  if (T.some(t => t[1] <= 0)) throw err('Bar diameters must be positive.');
+  if (T.some(t => t[0] !== Math.round(t[0]) || t[0] < nmin))
+    throw err(`Each ${what} needs a whole number of bars (at least ${nmin}).`);
+  return T;
+}
+
+function steelModel(p) {
+  const S = { model: p.steelModel, Es: p.Es, fy: p.fy, fu: p.fu, esh: p.esh, Esh: p.Esh, esu: p.esu };
+  if (S.Es <= 0 || S.fy <= 0) throw err('Es and fy must be positive.');
+  S.ey = S.fy / S.Es;
+  if (S.esu <= S.ey) throw err('esu must be larger than the yield strain fy/Es.');
+  if (S.model === 'Elastic-perfectly plastic') S.fu = S.fy;
+  else if (S.model === 'Bilinear hardening') { if (S.fu < S.fy) throw err('fu must not be smaller than fy.'); }
+  else if (S.model === 'Mander (1984)') {
+    if (S.fu <= S.fy) throw err('fu must be larger than fy.');
+    if (S.esh < S.ey || S.esh >= S.esu) throw err('esh must lie between fy/Es and esu.');
+    if (S.Esh <= 0 || S.Esh >= S.Es) throw err('Esh must be positive and smaller than Es.');
+    S.P = S.Esh * (S.esu - S.esh) / (S.fu - S.fy);
+  }
+  S.fsu = S.fu;
+  S.e = uniqueSorted([...lin(0, S.esu, 600), S.ey, S.esh])[0].filter(e => e <= S.esu);
+  S.f = S.e.map(e => steelStress(e, S));
+  return S;
+}
+
+function steelStress(e, S) {                // e >= 0; zero after fracture
+  if (e > S.esu) return 0;
+  if (!(e > S.ey)) return S.Es * e;
+  switch (S.model) {
+    case 'Elastic-perfectly plastic': return S.fy;
+    case 'Bilinear hardening': return S.fy + (S.fu - S.fy) * (e - S.ey) / (S.esu - S.ey);
+    default:
+      if (!(e > S.esh)) return S.fy;
+      return S.fu + (S.fy - S.fu) * Math.pow((S.esu - e) / (S.esu - S.esh), S.P);
+  }
+}
+
+function manderFcc(fco, flx, fly) {
+  const f1 = Math.min(flx, fly), f2 = Math.max(flx, fly);
+  if (f2 <= 0) return fco;
+  const gf = x => wwResidual(x, fco, f1, f2);
+  const lo = Math.max(fco, f2 * 1.0001), hi = 5.4 * fco - f1 - f2;
+  if (hi <= lo || gf(hi) <= 0) throw err('Confining pressure is beyond the range of the failure surface.');
+  if (gf(lo) >= 0) return lo;
+  let a = lo, b = hi;                       // bisection to machine precision
+  for (let i = 0; i < 200; i++) {
+    const m = 0.5 * (a + b);
+    if (m === a || m === b) break;
+    if (gf(m) < 0) a = m; else b = m;
+  }
+  return 0.5 * (a + b);
+}
+
+function wwResidual(fcc, fco, f1, f2) {
+  const s1 = -f1, s2 = -f2, s3 = -fcc;
+  const so = (s1 + s2 + s3) / 3;
+  const to = Math.sqrt((s1 - s2) ** 2 + (s2 - s3) ** 2 + (s3 - s1) ** 2) / 3;
+  const cth = (s1 - so) / (Math.SQRT2 * to);
+  const sb = so / fco;
+  const T = 0.069232 - 0.661091 * sb - 0.049350 * sb * sb;
+  const C = 0.122965 - 1.150502 * sb - 0.315545 * sb * sb;
+  const D = 4 * (C * C - T * T) * cth * cth;
+  const tb = C * (0.5 * D / cth + (2 * T - C) * Math.sqrt(D + 5 * T * T - 4 * T * C)) / (D + (2 * T - C) ** 2);
+  return to / fco - tb;
+}
+
+/* ------------------------------------------------------- moment-curvature */
+function chordArea(yE, Rr) {
+  const F = yE.map(y0 => { const y = Math.max(Math.min(y0, Rr), -Rr); return y * Math.sqrt(Math.max(Rr * Rr - y * y, 0)) + Rr * Rr * Math.asin(y / Rr); });
+  return F.slice(1).map((v, i) => v - F[i]);
+}
+
+function buildFibres(p, R, S, G) {
+  const nF = 200, F = {};
+  let H, Aall, Acore;
+  if (p.type === 'Circular') {
+    H = p.Dw;
+    const yE = lin(-H / 2, H / 2, nF + 1);
+    Aall = chordArea(yE, p.Dw / 2); Acore = chordArea(yE, p.ds / 2);
+    F.Ag = PI * p.Dw ** 2 / 4; F.yCore = p.ds / 2; F.yE = yE;
+  } else {
+    H = p.hw;
+    const yE = lin(-H / 2, H / 2, nF + 1);
+    Aall = yE.slice(1).map((y, i) => p.bw * (y - yE[i]));
+    Acore = yE.slice(1).map((y, i) => p.bc * Math.max(0, Math.min(y, p.dc / 2) - Math.max(yE[i], -p.dc / 2)));
+    F.Ag = p.bw * p.hw; F.yCore = p.dc / 2; F.yE = yE;
+  }
+  F.y = F.yE.slice(1).map((y, i) => (F.yE[i] + y) / 2);
+  F.Acore = Acore; F.Acov = Aall.map((a, i) => a - Acore[i]);
+  F.ys = G.Y.slice(); F.As = G.D.map(d => PI * d * d / 4);
+  F.yTop = H / 2; F.H = H; F.R = R; F.S = S;
+  F.Nref = F.Ag * R.fco;
+  F.confined = p.mcConcrete !== 'Unconfined section' && R.ke > 0;
+  return F;
+}
+
+function manderCurve(e, fc, ec, r) { const x = Math.max(e, 0) / ec; return fc * x * r / (r - 1 + Math.pow(x, r)); }
+
+function coverCurve(e, R) {
+  let f;
+  if (R.ecu0 > 2 * R.eco && e > 2 * R.eco)
+    f = manderCurve(2 * R.eco, R.fco, R.eco, R.r0) * (R.ecu0 - e) / (R.ecu0 - 2 * R.eco);
+  else f = manderCurve(e, R.fco, R.eco, R.r0);
+  if (e > R.ecu0 * (1 + 1e-9)) f = 0;
+  return f;
+}
+
+function fibreForces(et, c, F) {
+  const R = F.R, S = F.S;
+  let N = 0, M = 0;
+  for (let i = 0; i < F.y.length; i++) {
+    const ec = et * (1 - (F.yTop - F.y[i]) / c);
+    const sc = F.confined
+      ? manderCurve(ec, R.fcc, R.ecc, R.r) * F.Acore[i] + coverCurve(ec, R) * F.Acov[i]
+      : coverCurve(ec, R) * (F.Acore[i] + F.Acov[i]);
+    N += sc; M += sc * F.y[i];
+  }
+  for (let i = 0; i < F.ys.length; i++) {
+    const es = et * (1 - (F.yTop - F.ys[i]) / c);
+    const fcb = F.confined ? manderCurve(es, R.fcc, R.ecc, R.r) : coverCurve(es, R);
+    const fs = Math.sign(es) * steelStress(Math.min(Math.abs(es), S.esu), S);
+    const ss = (fs - fcb) * F.As[i];
+    N += ss; M += ss * F.ys[i];
+  }
+  return [N, M];
+}
+
+function neutralAxis(et, F, Napp, cGuess) {
+  const gfun = c => fibreForces(et, c, F)[0] - Napp;
+  const cMin = 1e-4 * F.H, cMax = 1e4 * F.H;
+  let a, b;
+  if (cGuess !== undefined && !Number.isNaN(cGuess)) { a = Math.max(0.8 * cGuess, cMin); b = Math.min(1.25 * cGuess, cMax); }
+  else { a = cMin; b = F.H; }
+  let ga = gfun(a);
+  while (ga > 0) { if (a <= cMin) return NaN; a = Math.max(a / 2, cMin); ga = gfun(a); }
+  let gb = gfun(b);
+  while (gb < 0) { if (b >= cMax) return NaN; b = Math.min(2 * b, cMax); gb = gfun(b); }
+  const tolN = 1e-7 * F.Nref;
+  let side = 0, c = b;
+  for (let it = 0; it < 100; it++) {
+    c = (a * gb - b * ga) / (gb - ga);
+    const gc = gfun(c);
+    if (Math.abs(gc) <= tolN || b - a <= 1e-9 * F.H) break;
+    if (gc > 0) { b = c; gb = gc; if (side === -1) ga /= 2; side = -1; }
+    else { a = c; ga = gc; if (side === 1) gb /= 2; side = 1; }
+  }
+  return c;
+}
+
+function firstCrossing(v, x, y) {
+  const i = v.findIndex(t => t >= 1);
+  if (i < 0) return [NaN, NaN, -1];
+  if (i === 0) return [x[0], y[0], 0];
+  const t = (1 - v[i - 1]) / (v[i] - v[i - 1]);
+  return [x[i - 1] + t * (x[i] - x[i - 1]), y[i - 1] + t * (y[i] - y[i - 1]), i];
+}
+
+function momentCurvature(p, R, S, G, stepDiv) {
+  const W = [];
+  if (stepDiv === undefined) stepDiv = 250;
+  const F = buildFibres(p, R, S, G);
+  let concTxt, yLim, eLim, limTxt;
+  if (F.confined) { concTxt = 'Confined core + unconfined cover'; yLim = F.yCore; eLim = R.ecu; limTxt = 'core concrete at ecu,c'; }
+  else {
+    concTxt = 'Unconfined (whole section)'; yLim = F.yTop; eLim = R.ecu0; limTxt = 'extreme fibre at ecu';
+    if (R.ke === 0 && p.mcConcrete !== 'Unconfined section') W.push('ke = 0: moment-curvature uses unconfined concrete for the whole section.');
+  }
+  const Napp = p.Nax * 1e3;
+  if (Napp <= -sum(F.As) * S.fu) throw err('Tension N exceeds the tensile capacity of the bars.');
+  const limStrain = (et, c) => et * (1 - (F.yTop - yLim) / c);
+  const barTension = (et, c) => { let m = Infinity; for (const y of F.ys) { const e = et * (1 - (F.yTop - y) / c); if (e < m) m = e; } return -m; };
+  const crit = (et, c) => Math.max(limStrain(et, c) / eLim, barTension(et, c) / S.esu);
+  const de = Math.min(eLim, 0.0125) / stepDiv;
+  const nMax = 20000;
+  const et = [0], cc = [0], M = [0], es = [0];
+  let etCur = 0, governs = '', cPrev = NaN;
+  for (let it = 0; it < nMax; it++) {
+    let etNew = etCur + de;
+    let c = neutralAxis(etNew, F, Napp, cPrev);
+    if (Number.isNaN(c)) {
+      if (et.length === 1) {
+        if (etNew > 2 * eLim) throw err(`Axial load N = ${g6(p.Nax)} kN exceeds the section capacity.`);
+        etCur = etNew; continue;
+      }
+      governs = 'loss of axial capacity'; break;
+    }
+    if (crit(etNew, c) >= 1) {
+      let a = etCur, b = etNew;
+      for (let j = 0; j < 25; j++) {
+        const m = (a + b) / 2, cm = neutralAxis(m, F, Napp, c);
+        if (Number.isNaN(cm) || crit(m, cm) >= 1) b = m; else a = m;
+      }
+      etNew = b; c = neutralAxis(b, F, Napp, c);
+      if (Number.isNaN(c)) { etNew = a; c = neutralAxis(a, F, Napp, cPrev); }
+      if (Number.isNaN(c)) { governs = 'loss of axial capacity'; break; }
+      governs = limStrain(etNew, c) / eLim >= barTension(etNew, c) / S.esu ? limTxt : 'bar fracture at esu';
+    }
+    const Mk = fibreForces(etNew, c, F)[1];
+    et.push(etNew); cc.push(c); M.push(Mk); es.push(barTension(etNew, c));
+    etCur = etNew; cPrev = c;
+    if (governs) break;
+  }
+  if (!governs) { governs = 'step limit'; W.push('Moment-curvature stopped at the step limit before failure.'); }
+  if (et.length < 3) throw err('No equilibrium found: check N and the section.');
+  let phi = et.map((e, i) => i === 0 ? 0 : e / cc[i] * 1e3);
+  let Mk = M.map(m => m / 1e6);
+  // keep the points where the curvature increases (cover spalling can step back)
+  const keep = [true]; let run = phi[0];
+  for (let i = 1; i < phi.length; i++) { keep.push(phi[i] > run); run = Math.max(run, phi[i]); }
+  const pick = a => a.filter((v, i) => keep[i]);
+  const ET = pick(et), CC = pick(cc), ES = pick(es); Mk = pick(Mk); phi = pick(phi);
+  // first yield
+  const [phiY1, MY1, iy] = firstCrossing(ET.map((e, i) => Math.max(ES[i] / S.ey, e / 0.002)), phi, Mk);
+  let yieldBy;
+  if (Number.isNaN(MY1)) { yieldBy = '-'; W.push('First yield was not reached before ultimate.'); }
+  else yieldBy = ES[iy] / S.ey >= ET[iy] / 0.002 ? 'bar' : 'concrete ε 0.002';
+  // nominal moment
+  let Mn = firstCrossing(ET.map((e, i) => Math.max(ES[i] / 0.015, e / 0.004)), phi, Mk)[1];
+  let MnReached = !Number.isNaN(Mn);
+  if (!MnReached) { Mn = Mk[Mk.length - 1]; W.push('Mn taken at ultimate (0.004 / 0.015 not reached).'); }
+  if (Mn <= 0) { Mn = NaN; MnReached = false; W.push('Mn not defined: the moment is not positive at the nominal strains (section close to its axial capacity).'); }
+  const phiY = phiY1 * Mn / MY1;
+  const [Mmax, iMax] = argmax(Mk);
+  const mu = phi[phi.length - 1] / phiY;
+  const i80 = Mk.slice(iMax).findIndex(m => m < 0.8 * Mmax);
+  if (i80 >= 0) W.push(`M drops below 0.8 Mmax at phi = ${phi[iMax + i80].toFixed(4)} 1/m, before the strain limits; use this as ultimate if your code requires it.`);
+  return { N: p.Nax, nu: Napp / (F.Ag * R.fco), phi, M: Mk, c: CC, etop: ET, esT: ES, phiY1, MY1, yieldBy,
+    Mn, phiY, Mmax, phiMmax: phi[iMax], phiU: phi[phi.length - 1], MU: Mk[Mk.length - 1], governs, mu,
+    concrete: concTxt, confined: F.confined, MnReached, warnings: W };
+}
+
+/* ------------------------------------------------------- N-M interaction */
+function profileForces(eTop, k, F, law) {
+  let N = 0, M = 0;
+  for (let i = 0; i < F.y.length; i++) {
+    const ec = eTop - k * (F.yTop - F.y[i]);
+    const sc = law.core(ec) * F.Acore[i] + law.cover(ec) * F.Acov[i];
+    N += sc; M += sc * F.y[i];
+  }
+  for (let i = 0; i < F.ys.length; i++) {
+    const es = eTop - k * (F.yTop - F.ys[i]);
+    const ss = (law.steel(es) - law.core(es)) * F.As[i];
+    N += ss; M += ss * F.ys[i];
+  }
+  return [N, M];
+}
+
+function maxUniformN(F, law, eLim) {
+  const eg = lin(eLim / 400, eLim, 400);
+  const Nu = eg.map(e => profileForces(e, 0, F, law)[0]);
+  const [N0, j] = argmax(Nu);
+  return [N0, eg[j]];
+}
+
+function manderLaw(F, R, S) {
+  return {
+    core: F.confined ? (e => manderCurve(e, R.fcc, R.ecc, R.r)) : (e => coverCurve(e, R)),
+    cover: e => coverCurve(e, R),
+    steel: e => Math.sign(e) * steelStress(Math.min(Math.abs(e), S.esu), S)
+  };
+}
+
+function ec2Concrete(e, fcd, ec2, ecu2, n) {
+  e = Math.max(e, 0);
+  if (e > ecu2 * (1 + 1e-9)) return 0;
+  return fcd * (1 - Math.pow(1 - Math.min(e, ec2) / ec2, n));
+}
+
+function nmBranch(F, law, eLim, ePk, eSlim) {
+  const H = F.H, dT = F.yTop - minOf(F.ys);
+  const cs = [...lin(-2.5, 0, 120).map(v => H * 10 ** v), ...lin(-2, 2, 40).map(v => H * (1 + 10 ** v))];
+  const N = [], M = [];
+  let r = profileForces(-Math.min(eSlim, 0.1), 0, F, law); N.push(r[0]); M.push(r[1]);
+  const xC = (1 - ePk / eLim) * H;
+  for (const c of cs) {
+    let k;
+    if (c <= H) { k = eLim / c; if (dT > c) k = Math.min(k, eSlim / (dT - c)); }
+    else k = ePk / (c - xC);
+    r = profileForces(k * c, k, F, law); N.push(r[0]); M.push(r[1]);
+  }
+  r = profileForces(ePk, 0, F, law); N.push(r[0]); M.push(r[1]);
+  return [N.map(v => v / 1e3), M.map(v => v / 1e6)];
+}
+
+function mkCurve(name, label, short, main, style, color, Np, Mp, Nn, Mn) {
+  const okP = Np.map((v, i) => Number.isFinite(v) && Number.isFinite(Mp[i]));
+  const okN = Nn.map((v, i) => Number.isFinite(v) && Number.isFinite(Mn[i]));
+  const np = Np.filter((v, i) => okP[i]), mp = Mp.filter((v, i) => okP[i]);
+  const nn = Nn.filter((v, i) => okN[i]), mn = Mn.filter((v, i) => okN[i]);
+  const gap = main ? [] : [NaN];
+  return { name, label, short, main, style, color, Npos: np, Mpos: mp, Nneg: nn, Mneg: mn,
+    N: [...np, ...gap, ...nn.slice().reverse()], M: [...mp, ...gap, ...mn.slice().reverse()] };
+}
+
+function nmMphi(p, R, S, G, Gm, F, isSym, mainOnly, onProgress) {
+  const law = manderLaw(F, R, S);
+  const eLim = F.confined ? R.ecu : R.ecu0;
+  const N0 = maxUniformN(F, law, eLim)[0] / 1e3;
+  const Nt = -sum(F.As) * S.fu / 1e3;
+  const lev = uniqueSorted([...lin(0.9 * Nt, 0.95 * N0, 22), 0])[0];
+  const nS = isSym ? 1 : 2, nL = lev.length;
+  const Mx = [new Array(nL).fill(NaN), new Array(nL).fill(NaN)];
+  const Mnom = [new Array(nL).fill(NaN), new Array(nL).fill(NaN)];
+  const My = [new Array(nL).fill(NaN), new Array(nL).fill(NaN)];
+  const Gs = [G, Gm];
+  for (let s = 0; s < nS; s++) for (let i = 0; i < nL; i++) {
+    try {
+      const MC = momentCurvature(Object.assign({}, p, { Nax: lev[i] }), R, S, Gs[s], 100);
+      Mx[s][i] = MC.Mmax; My[s][i] = MC.MY1;
+      if (MC.MnReached) Mnom[s][i] = MC.Mn;
+    } catch (e) { /* no equilibrium at this N: point skipped */ }
+    if (onProgress) onProgress((s * nL + i + 1) / (nS * nL));
+  }
+  if (isSym) { Mx[1] = Mx[0]; Mnom[1] = Mnom[0]; My[1] = My[0]; }
+  const neg = a => a.map(v => -v);
+  const green = '#34c77b';
+  const curves = [mkCurve('M-phi Mmax', 'From M-φ: Mmax', 'M-phi', true, '-', green,
+    [Nt, ...lev, N0], [0, ...Mx[0], 0], [Nt, ...lev, N0], neg([0, ...Mx[1], 0]))];
+  if (!mainOnly) {
+    curves.push(mkCurve('M-phi Mn', 'From M-φ: Mn (nominal)', 'M-phi Mn', false, '--', green, lev, Mnom[0], lev, neg(Mnom[1])));
+    curves.push(mkCurve("M-phi My'", "From M-φ: M'y (first yield)", "M-phi My'", false, ':', green, lev, My[0], lev, neg(My[1])));
+  }
+  return curves;
+}
+
+function nmDiagram(p, R, S, G, onProgress) {
+  const W = [];
+  const F = buildFibres(p, R, S, G);
+  const Gm = Object.assign({}, G, { Y: G.Y.map(y => -y) });
+  const Fm = Object.assign({}, F, { ys: F.ys.map(y => -y) });
+  const key = (y, d) => [y.map((v, i) => [Math.round(v * 1e6) / 1e6, d[i]]).sort((a, b) => a[0] - b[0] || a[1] - b[1])].toString();
+  const isSym = key(G.Y, G.D) === key(G.Y.map(y => -y), G.D);
+  const all3 = p.nmMethod === 'Compare all three';
+  let curves = [];
+  if (all3 || p.nmMethod === 'From M-phi (Mander)') curves = curves.concat(nmMphi(p, R, S, G, Gm, F, isSym, all3, onProgress));
+  if (all3 || p.nmMethod === 'Strain compatibility') {
+    if (!(p.ecLim > 0)) throw err('ec,lim must be positive.');
+    const eCon = F.confined ? R.ecu : R.ecu0, conTxt = F.confined ? 'ecu,c' : 'ecu';
+    if (p.ecLim > eCon) W.push(`Strain compatibility: ec,lim = ${g6(p.ecLim)} is beyond the concrete limit ${conTxt} = ${eCon.toFixed(4)}; the concrete there has already failed.`);
+    const law = manderLaw(F, R, S);
+    const ePk = maxUniformN(F, law, p.ecLim)[1];
+    const [Np, Mp] = nmBranch(F, law, p.ecLim, ePk, S.esu);
+    let Nn, Mn;
+    if (isSym) { Nn = Np; Mn = Mp.map(v => -v); } else { [Nn, Mn] = nmBranch(Fm, law, p.ecLim, ePk, S.esu); Mn = Mn.map(v => -v); }
+    const txt = `Strain compatibility (εc = ${g6(p.ecLim)})`;
+    curves.push(mkCurve(txt, txt, 'Strain comp.', true, '-', '#4285f4', Np, Mp, Nn, Mn));
+  }
+  if (all3 || p.nmMethod === 'EC2 design') {
+    if (p.gc <= 0 || p.gs <= 0 || p.acc <= 0) throw err('EC2 factors must be positive.');
+    const fck = R.fco;
+    if (fck > 90) throw err('EC2 parabola-rectangle is defined up to fck = 90 MPa.');
+    let ec2, ecu2, n;
+    if (fck <= 50) { ec2 = 0.002; ecu2 = 0.0035; n = 2; }
+    else { ec2 = (2.0 + 0.085 * (fck - 50) ** 0.53) / 1000; ecu2 = (2.6 + 35 * ((90 - fck) / 100) ** 4) / 1000; n = 1.4 + 23.4 * ((90 - fck) / 100) ** 4; }
+    const fcd = p.acc * fck / p.gc, fyd = S.fy / p.gs;
+    const law = { core: e => ec2Concrete(e, fcd, ec2, ecu2, n), cover: e => ec2Concrete(e, fcd, ec2, ecu2, n),
+      steel: e => Math.sign(e) * Math.min(S.Es * Math.abs(e), fyd) };
+    const [Np, Mp] = nmBranch(F, law, ecu2, ec2, Infinity);
+    let Nn, Mn;
+    if (isSym) { Nn = Np; Mn = Mp.map(v => -v); } else { [Nn, Mn] = nmBranch(Fm, law, ecu2, ec2, Infinity); Mn = Mn.map(v => -v); }
+    curves.push(mkCurve('EC2 design', 'EC2 design', 'EC2', true, '-', '#f5a04e', Np, Mp, Nn, Mn));
+    W.push(`EC2 design: fck = fco = ${g6(fck)} MPa, fyk = fy = ${g6(S.fy)} MPa, fcd = ${fcd.toFixed(2)} MPa, fyd = ${fyd.toFixed(1)} MPa; minimum eccentricity (6.1(4)) not applied.`);
+  }
+  for (const c of curves) {
+    const [Mb, j] = argmax(c.Mpos);
+    c.Mb = c.Mpos.length ? Mb : NaN; c.Nb = c.Mpos.length ? c.Npos[j] : NaN;
+    c.N0 = maxOf(c.Npos); c.Nt = minOf(c.Npos);
+    const [Nu, iu] = uniqueSorted(c.Npos);
+    c.Mcur = Nu.length >= 2 ? interp1(Nu, iu.map(i => c.Mpos[i]), p.Nax) : NaN;
+  }
+  return { method: p.nmMethod, curves, Ncur: p.Nax, warnings: W };
+}
+
+return { manderModel, previewGeometry, momentCurvature, nmDiagram, steelStress, coverCurve, manderCurve, buildFibres, profileForces, manderLaw, lin };
+})();
+/* ===ENGINE END=== */
+</script>
+
+<script>
+/* ===================================================================== UI */
+'use strict';
+const $ = id => document.getElementById(id);
+const VER = '1.0 (2026-11-24)';
+const PHI = 'ø', EPS = 'ε', RHO = 'ρ';
+const NUM_KEYS = ['cover','Dw','ds','bw','hw','bo','ho','fco','eco','ecu0','Ec','dbh','s','fyh','esuh',
+  'Es','fy','fu','esh','Esh','esu','Usf','ecuUser','Nax','ecLim','gc','gs','acc'];
+const LABELS = { cover:'Clear cover', Dw:'D', ds:'ds', bw:'b', hw:'h', bc:'bo', dc:'ho', fco:'fco', eco:'εco',
+  ecu0:'εcu (unconfined)', Ec:'Ec', dbh:'ø hoop', s:'s', fyh:'fyh', esuh:'εsuh', Es:'Es', fy:'fy', fu:'fu',
+  esh:'εsh', Esh:'Esh', esu:'εsu', Usf:'Usf', ecuUser:'εcu,c user value', Nax:'N', ecLim:'εc,lim',
+  gc:'γc', gs:'γs', acc:'αcc', nlx:'legs x', nly:'legs y' };
+
+/* ---------------- bar tables (state) */
+let barsC = [{ n: 12, d: 25 }];
+let barsR = [{ n: 3, d: 16, tie: true }, { n: 2, d: 16, tie: false }, { n: 3, d: 16, tie: true }];
+let tieV = [{ x: 0, ok: true, tie: false }];
+
+function renderTables() {
+  const lr = i => i === 0 ? 'Top' : (i === barsR.length - 1 ? 'Bottom' : `Line ${i + 1}`);
+  $('tbC').innerHTML = barsC.map((b, i) =>
+    `<tr><td>Group ${i + 1}</td><td><input type="number" data-t="C" data-i="${i}" data-k="n" value="${b.n}"></td>` +
+    `<td><input type="number" data-t="C" data-i="${i}" data-k="d" value="${b.d}"></td></tr>`).join('');
+  $('tbR').innerHTML = barsR.map((b, i) => {
+    const edge = i === 0 || i === barsR.length - 1;
+    return `<tr><td>${lr(i)}</td><td><input type="number" data-t="R" data-i="${i}" data-k="n" value="${b.n}"></td>` +
+      `<td><input type="number" data-t="R" data-i="${i}" data-k="d" value="${b.d}"></td>` +
+      `<td style="text-align:center"><input type="checkbox" data-t="R" data-i="${i}" data-k="tie" ${edge || b.tie ? 'checked' : ''} ${edge ? 'disabled title="held by the perimeter hoop"' : ''}></td></tr>`;
+  }).join('');
+  renderTieTable();
+}
+// the vertical-tie rows follow the top line and the core width, so they are
+// rebuilt when those change; the bar tables only when rows are added or removed
+// (keeps the focus in the cell being typed in)
+let tieSig = null;
+function renderTieTable() {
+  const sig = tieV.map(t => Math.round(t.x) + (t.ok ? '' : 'x')).join(',');
+  if (sig === tieSig) return;
+  tieSig = sig;
+  // a tie needs a bar at both ends: rows without a bottom-line bar at the same x are locked
+  $('tbV').innerHTML = tieV.length ? tieV.map((t, i) =>
+    `<tr><td>Bar ${i + 2}</td><td>${Math.round(t.x)}</td>` +
+    `<td style="text-align:center">` + (t.ok
+      ? `<input type="checkbox" data-t="V" data-i="${i}" ${t.tie ? 'checked' : ''}>`
+      : `<input type="checkbox" disabled title="No bottom-line bar at this x: a tie must hook a bar at both ends"> <span class="na">no bottom bar</span>`) +
+    `</td></tr>`).join('')
+    : '<tr><td colspan="3" style="color:var(--txt3)">no inner bars in the top line</td></tr>';
+}
+
+function onTableInput(ev) {
+  const el = ev.target; if (!el.dataset || !el.dataset.t) return;
+  const i = +el.dataset.i, t = el.dataset.t;
+  if (t === 'V') tieV[i].tie = el.checked;
+  else {
+    const arr = t === 'C' ? barsC : barsR, k = el.dataset.k;
+    arr[i][k] = k === 'tie' ? el.checked : (el.value === '' ? NaN : +el.value);
+  }
+  inputsChanged();
+}
+
+/* vertical tie rows follow the inner bars of the top line; a tie is possible
+   (ok) only where an inner bottom-line bar has the same x (same rule as the engine) */
+function syncTieTable(bc, dbh) {
+  const n = barsR[0].n, db = barsR[0].d, bot = barsR[barsR.length - 1];
+  if (!Number.isFinite(n) || !Number.isFinite(db) || n < 2) return;
+  const inner = (nn, dd) => { const xe = bc / 2 - dbh / 2 - dd / 2; return Engine.lin(-xe, xe, Math.round(nn)).slice(1, -1); };
+  const xs = inner(n, db);
+  const xb = Number.isFinite(bot.n) && Number.isFinite(bot.d) && bot.n >= 2 ? inner(bot.n, bot.d) : [];
+  const md = Math.max(...barsR.map(b => b.d).filter(Number.isFinite));
+  const keep = tieV.length === xs.length;
+  // 'tie' keeps the user's tick, so it comes back if the bottom bar returns
+  tieV = xs.map((x, k) => ({ x, ok: xb.some(v => Math.abs(v - x) < md / 2), tie: keep ? tieV[k].tie : true }));
+}
+
+/* ---------------- inputs */
+const num = id => { const v = $(id).value; return v === '' ? NaN : +v; };
+function refreshEnable() {
+  const isCirc = $('type').value === 'Circular';
+  ['Dw', 'coreAutoC', 'trans', 'addC', 'remC'].forEach(k => $(k).disabled = !isCirc);
+  ['bw', 'hw', 'coreAutoR', 'addR', 'remR'].forEach(k => $(k).disabled = isCirc);
+  document.querySelectorAll('#tbC input').forEach(e => e.disabled = !isCirc);
+  document.querySelectorAll('#tbR input,#tbV input').forEach(e => { if (!e.title) e.disabled = isCirc; });
+  $('secCirc').classList.toggle('hide', !isCirc); $('secRect').classList.toggle('hide', isCirc);
+  $('ds').disabled = !isCirc || $('coreAutoC').checked;
+  $('bo').disabled = isCirc || $('coreAutoR').checked;
+  $('ho').disabled = isCirc || $('coreAutoR').checked;
+  // core to the hoop centreline (auto or user value)
+  const off = 2 * num('cover') + num('dbh');
+  if ($('coreAutoR').checked) { $('bo').value = +(num('bw') - off).toFixed(6); $('ho').value = +(num('hw') - off).toFixed(6); }
+  if ($('coreAutoC').checked) $('ds').value = +(num('Dw') - off).toFixed(6);
+  $('Ec').disabled = $('EcAuto').checked;
+  if ($('EcAuto').checked) $('Ec').value = Math.round(5000 * Math.sqrt(Math.max(num('fco'), 0)));
+  const m = $('steelModel').value;
+  $('fu').disabled = m === 'Elastic-perfectly plastic';
+  $('esh').disabled = $('Esh').disabled = m !== 'Mander (1984)';
+  $('ecuUser').disabled = $('ecuMethod').value !== 'User-defined';
+  $('Usf').disabled = $('ecuMethod').value !== 'Energy balance';
+  const nm = $('nmMethod').value, cmp = nm === 'Compare all three';
+  $('ecLim').disabled = !(cmp || nm === 'Strain compatibility');
+  $('gc').disabled = $('gs').disabled = $('acc').disabled = !(cmp || nm === 'EC2 design');
+}
+
+function readInputs() {
+  const p = {};
+  ['type', 'trans', 'ecuMethod', 'steelModel', 'mcConcrete', 'nmMethod'].forEach(k => p[k] = $(k).value);
+  p.EcAuto = $('EcAuto').checked; p.coreAutoC = $('coreAutoC').checked; p.coreAutoR = $('coreAutoR').checked;
+  NUM_KEYS.forEach(k => p[k] = num(k));
+  p.bc = p.bo; p.dc = p.ho; delete p.bo; delete p.ho;     // Mander's bc, dc
+  p.barsC = barsC.map(b => [b.n, b.d]);
+  p.barsR = barsR.map(b => [b.n, b.d]);
+  const tie = barsR.map(b => b.tie);
+  p.tieR = tie.map((t, i) => i > 0 && i < tie.length - 1 && t);
+  p.nlx = 2 + p.tieR.filter(Boolean).length;
+  syncTieTable(p.bc, p.dbh);
+  p.tieV = tieV.map(t => t.tie && t.ok);              // effective ties only
+  p.nly = 2 + p.tieV.filter(Boolean).length;
+  $('nlx').value = p.nlx; $('nly').value = p.nly;
+  return p;
+}
+
+/* ---------------- status */
+function status(cls, txt) { $('statusbar').className = cls; $('stxt').textContent = txt; }
+
+/* ---------------- charts */
+const CH = {};
+const bgPlugin = { id: 'bg', beforeDraw(c) { const x = c.ctx; x.save(); x.globalCompositeOperation = 'destination-over'; x.fillStyle = '#1e2535'; x.fillRect(0, 0, c.width, c.height); x.restore(); } };
+function axis(title) {
+  return { type: 'linear', title: { display: true, text: title, color: '#8a97b0', font: { size: 10 } },
+    ticks: { color: '#8a97b0', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,.05)' }, border: { color: '#2e3a52' } };
+}
+function mkChart(id, xt, yt) {
+  CH[id] = new Chart($(id), {
+    type: 'scatter', data: { datasets: [] }, plugins: [bgPlugin],
+    options: { animation: false, responsive: true, maintainAspectRatio: false, parsing: false,
+      plugins: { legend: { labels: { color: '#8a97b0', font: { size: 10 }, usePointStyle: true, boxWidth: 8,
+          filter: it => !!it.text } },
+        tooltip: { callbacks: { label: c => `${c.dataset.label ? c.dataset.label + ': ' : ''}(${fmt(c.parsed.x)}, ${fmt(c.parsed.y)})` } } },
+      scales: { x: axis(xt), y: axis(yt) } } });
+}
+const fmt = v => Math.abs(v) >= 100 ? v.toFixed(1) : (Math.abs(v) >= 1 ? v.toFixed(3) : v.toPrecision(4));
+const xy = (x, y) => x.map((v, i) => ({ x: v, y: y[i] }));
+const line = (label, x, y, color, opt = {}) => Object.assign({ label, data: xy(x, y), showLine: true, borderColor: color,
+  backgroundColor: color, borderWidth: 2, pointRadius: 0, pointStyle: 'line', spanGaps: false }, opt);
+// round axis limit just above v (e.g. 35.4 -> 40, 411.6 -> 450)
+const niceCeil = v => { if (!(v > 0)) return undefined; const st = 5 * 10 ** (Math.floor(Math.log10(v)) - 1); return Math.ceil(v / st) * st; };
+const marker = (label, x, y, style, fill, opt = {}) => Object.assign({ label, data: [{ x, y }], pointStyle: style,
+  pointRadius: 6, pointHoverRadius: 7, backgroundColor: fill, borderColor: '#0b0f17', borderWidth: 1, showLine: false }, opt);
+const DASH = { '-': [], '--': [7, 4], ':': [2, 3] };
+
+function plotConcrete(R, C) {
+  const ch = CH.chC;
+  ch.data.datasets = [
+    line('Confined', C.e_conf, C.f_conf, '#4285f4'),
+    line('Unconfined', C.e_unc, C.f_unc, '#8a97b0', { borderDash: [6, 4], borderWidth: 1.5 }),
+    marker(`Peak: ${R.ecc.toFixed(4)}, ${R.fcc.toFixed(2)} MPa`, R.ecc, R.fcc, 'circle', '#4285f4'),
+    marker(`Ultimate: ${R.ecu.toFixed(4)}, ${R.fcu.toFixed(2)} MPa`, R.ecu, R.fcu, 'rect', '#f55f4e')];
+  ch.options.scales.x.min = 0; ch.options.scales.x.max = 1.05 * Math.max(R.ecu, C.e_unc[C.e_unc.length - 1]);
+  ch.options.scales.y.min = 0; ch.options.scales.y.max = niceCeil(1.12 * R.fcc);
+  ch.options.scales.x.title.text = 'Strain εc'; ch.options.scales.y.title.text = 'Stress fc (MPa)';
+  ch.update('none');
+  $('cTitle').textContent = `Concrete – ${R.type.toLowerCase()} section · fcc/fco = ${(R.fcc / R.fco).toFixed(3)}`;
+}
+
+function plotSteel(S) {
+  const ch = CH.chS;
+  const ds = [line(S.model, S.e, S.f, '#b38cf5'), marker(`Yield: ${S.ey.toFixed(5)}, ${S.fy} MPa`, S.ey, S.fy, 'circle', '#e8edf5')];
+  if (S.model === 'Mander (1984)') ds.push(marker(`Hardening starts: ${S.esh}`, S.esh, S.fy, 'circle', '#8a97b0'));
+  ds.push(marker(`Ultimate: ${S.esu}, ${S.fsu} MPa`, S.esu, S.fsu, 'rect', '#f55f4e'));
+  ch.data.datasets = ds;
+  ch.options.scales.x.min = 0; ch.options.scales.x.max = 1.05 * S.esu;
+  ch.options.scales.y.min = 0; ch.options.scales.y.max = niceCeil(1.12 * Math.max(...S.f));
+  ch.update('none');
+  $('sTitle').textContent = `Reinforcement – ${S.model}`;
+}
+
+function plotMC(MC) {
+  const ch = CH.chM;
+  if (!MC) { ch.data.datasets = []; ch.update('none'); $('mTitle').textContent = 'Moment–curvature not available (see messages)'; return; }
+  const ds = [line(`M-φ, ${MC.concrete.toLowerCase()}`, MC.phi, MC.M, '#34c77b')];
+  if (!Number.isNaN(MC.MY1)) ds.push(marker(`First yield: ${MC.phiY1.toFixed(4)} 1/m, ${MC.MY1.toFixed(1)} kNm`, MC.phiY1, MC.MY1, 'circle', '#e8edf5'));
+  if (!Number.isNaN(MC.phiY)) {
+    ds.push(line('Bilinear (Priestley 2007)', [0, MC.phiY, MC.phiU], [0, MC.Mn, MC.MU], '#8a97b0', { borderDash: [7, 4], borderWidth: 1.3 }));
+    ds.push(marker(`Idealized yield: ${MC.phiY.toFixed(4)} 1/m, Mn = ${MC.Mn.toFixed(1)} kNm`, MC.phiY, MC.Mn, 'rectRot', '#5a6680'));
+  }
+  ds.push(marker(`Ultimate: ${MC.phiU.toFixed(4)} 1/m, ${MC.MU.toFixed(1)} kNm`, MC.phiU, MC.MU, 'rect', '#f55f4e'));
+  ch.data.datasets = ds;
+  ch.options.scales.x.min = 0; ch.options.scales.x.max = 1.05 * MC.phiU;
+  ch.options.scales.y.min = 0; ch.options.scales.y.max = niceCeil(1.15 * MC.Mmax);
+  ch.update('none');
+  const mu = Number.isNaN(MC.mu) ? '–' : MC.mu.toFixed(1);
+  $('mTitle').textContent = `N = ${MC.N} kN (N/Ag·fco = ${MC.nu.toFixed(2)}) · μφ = ${mu} · ${MC.governs}`;
+}
+
+function plotNM(NM) {
+  const ch = CH.chNM;
+  if (!NM) { ch.data.datasets = []; ch.update('none'); $('nmTitle').textContent = 'N–M interaction not available (see messages)'; return; }
+  const ds = [];
+  let mMax = 0, nMin = 0, nMax = 0;
+  for (const c of NM.curves) {
+    // one dataset per unbroken piece: with parsing: false Chart.js treats the data as
+    // x-sorted, so with fixed x limits it stops drawing at the first NaN gap (left branch lost)
+    let piece = { M: [], N: [] }; const pieces = [piece];
+    c.M.forEach((m, i) => {
+      if (Number.isFinite(m) && Number.isFinite(c.N[i])) { piece.M.push(m); piece.N.push(c.N[i]); }
+      else if (piece.M.length) pieces.push(piece = { M: [], N: [] });
+    });
+    pieces.filter(q => q.M.length).forEach((q, k) =>
+      ds.push(line(k ? '' : c.label, q.M, q.N, c.color, { borderDash: DASH[c.style], borderWidth: c.main ? 2 : 1.3 })));
+    c.M.forEach(v => { if (Number.isFinite(v)) mMax = Math.max(mMax, Math.abs(v)); });
+    c.N.forEach(v => { if (Number.isFinite(v)) { nMin = Math.min(nMin, v); nMax = Math.max(nMax, v); } });
+  }
+  for (const c of NM.curves.filter(c => c.main)) {
+    ds.push(marker(`Balance (${c.short}): ${c.Nb.toFixed(0)} kN, ${c.Mb.toFixed(1)} kNm`, c.Mb, c.Nb, 'circle', c.color));
+    if (Number.isFinite(c.Mcur)) ds.push(marker('', c.Mcur, NM.Ncur, 'rectRot', '#161b26', { borderColor: c.color, borderWidth: 2 }));
+  }
+  const xr = niceCeil(1.08 * mMax) || 1;
+  ds.push(line(`Current N = ${NM.Ncur} kN`, [-xr, xr], [NM.Ncur, NM.Ncur], '#e8edf5', { borderDash: [5, 4], borderWidth: 1 }));
+  ds.push(line('', [0, 0], [nMin - 0.05 * (nMax - nMin), nMax + 0.05 * (nMax - nMin)], 'rgba(138,151,176,.45)', { borderDash: [2, 3], borderWidth: 1 }));
+  ch.data.datasets = ds;
+  ch.options.scales.x.min = -xr; ch.options.scales.x.max = xr;
+  ch.options.scales.y.min = undefined; ch.options.scales.y.max = undefined;
+  ch.update('none');
+  $('nmTitle').textContent = `N–M interaction – ${NM.method}`;
+}
+
+/* ---------------- section drawing */
+function drawSection(p, G) {
+  const cv = $('secCanvas'), wrap = $('secCanvasWrap');
+  const dpr = window.devicePixelRatio || 1, W = wrap.clientWidth, H = wrap.clientHeight;
+  if (W < 40 || H < 40) return;             // tab hidden: drawn when the tab is opened
+  cv.width = W * dpr; cv.height = H * dpr;
+  const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
+  x.fillStyle = '#1e2535'; x.fillRect(0, 0, W, H);
+  if (!p || !G) return;
+  const circ = p.type === 'Circular', dh = p.dbh;
+  const Bw = circ ? p.Dw : p.bw, Hh = circ ? p.Dw : p.hw;
+  const room = circ ? 1.12 : 1.45;
+  const sc = Math.min((W - 20) / (Bw * room), (H - 20) / (Hh * 1.12));
+  const cx = circ ? W / 2 : W / 2 - Bw * sc * 0.18, cy = H / 2;
+  const X = v => cx + v * sc, Y = v => cy - v * sc;
+  const cCover = '#3a465f', cCore = '#4b4732', cHoop = '#f5764e';
+  if (circ) {
+    x.fillStyle = cCover; x.beginPath(); x.arc(cx, cy, p.Dw / 2 * sc, 0, 2 * Math.PI); x.fill();
+    x.fillStyle = cCore; x.beginPath(); x.arc(cx, cy, p.ds / 2 * sc, 0, 2 * Math.PI); x.fill();
+    x.strokeStyle = cHoop; x.lineWidth = Math.max(dh * sc, 1.5); x.beginPath(); x.arc(cx, cy, p.ds / 2 * sc, 0, 2 * Math.PI); x.stroke();
+  } else {
+    x.fillStyle = cCover; x.fillRect(X(-p.bw / 2), Y(p.hw / 2), p.bw * sc, p.hw * sc);
+    x.fillStyle = cCore; x.fillRect(X(-p.bc / 2), Y(p.dc / 2), p.bc * sc, p.dc * sc);
+    x.strokeStyle = cHoop; x.lineWidth = Math.max(dh * sc, 1.5);
+    x.strokeRect(X(-p.bc / 2), Y(p.dc / 2), p.bc * sc, p.dc * sc);
+    x.beginPath();
+    G.lineY.forEach((yy, i) => { if (p.tieR[i]) { x.moveTo(X(-p.bc / 2), Y(yy)); x.lineTo(X(p.bc / 2), Y(yy)); } });
+    G.tieX.forEach(xx => { x.moveTo(X(xx), Y(p.dc / 2)); x.lineTo(X(xx), Y(-p.dc / 2)); });
+    x.stroke();
+    // ineffectively confined zones: parabolas between restrained bars, rise w'/4
+    x.strokeStyle = '#6fa3ff'; x.lineWidth = 1.2; x.setLineDash([5, 4]);
+    const n = G.Xp.length;
+    for (let k = 0; k < n; k++) {
+      const k2 = (k + 1) % n, P1 = [G.Xp[k], G.Yp[k]], P2 = [G.Xp[k2], G.Yp[k2]];
+      const L = Math.hypot(P2[0] - P1[0], P2[1] - P1[1]), t = [(P2[0] - P1[0]) / L, (P2[1] - P1[1]) / L];
+      let nr = [-t[1], t[0]]; const mid = [(P1[0] + P2[0]) / 2, (P1[1] + P2[1]) / 2];
+      if (nr[0] * -mid[0] + nr[1] * -mid[1] < 0) nr = [-nr[0], -nr[1]];
+      const w = G.w[k];
+      x.beginPath();
+      for (let j = 0; j <= 40; j++) {
+        const u = j / 40;
+        const px = P1[0] + t[0] * G.Dp[k] / 2 + u * w * t[0] + w * u * (1 - u) * nr[0];
+        const py = P1[1] + t[1] * G.Dp[k] / 2 + u * w * t[1] + w * u * (1 - u) * nr[1];
+        if (j === 0) x.moveTo(X(px), Y(py)); else x.lineTo(X(px), Y(py));
+      }
+      x.stroke();
+    }
+    x.setLineDash([]);
+    x.fillStyle = '#8a97b0'; x.font = '10px JetBrains Mono, monospace'; x.textBaseline = 'middle';
+    G.lineY.forEach((yy, i) => x.fillText(`${G.lineN[i]}${PHI}${G.lineD[i]}`, X(p.bw / 2) + 8, Y(yy)));
+  }
+  for (let k = 0; k < G.X.length; k++) {
+    x.fillStyle = G.free[k] ? '#5a6680' : '#e8edf5';
+    x.beginPath(); x.arc(X(G.X[k]), Y(G.Y[k]), Math.max(G.D[k] / 2 * sc, 2), 0, 2 * Math.PI); x.fill();
+  }
+  const anyFree = G.free.some(Boolean);
+  $('secLegend').innerHTML =
+    `<span><i style="background:${cCover}"></i>Cover</span><span><i style="background:${cCore}"></i>Core (to hoop c/l)</span>` +
+    `<span><i style="background:${cHoop}"></i>Hoop / ties</span><span><i style="background:#e8edf5;border-radius:50%"></i>Restrained bars</span>` +
+    (anyFree ? `<span><i style="background:#5a6680;border-radius:50%"></i>Unrestrained bars</span>` : '') +
+    (circ ? '' : `<span><i class="dash"></i>Arching zone</span>`);
+  if (circ) {
+    const ud = [...new Set(G.D)];
+    $('secTitle').textContent = `${PHI}${p.Dw} mm · ${ud.map(d => `${G.D.filter(v => v === d).length}${PHI}${d}`).join(' + ')} · As = ${G.As.toFixed(0)} mm² · ${PHI}${dh} @ ${p.s} mm`;
+  } else {
+    $('secTitle').textContent = `${p.bw} × ${p.hw} mm · ${G.X.length} bars · As = ${G.As.toFixed(0)} mm² · ${PHI}${dh} @ ${p.s} mm`;
+  }
+}
+
+/* ---------------- tables */
+const f = (v, d) => Number.isFinite(v) ? v.toFixed(d) : '–';
+function resultRows(R, S, G, MC, NM) {
+  const rows = [];
+  const grp = t => rows.push([t]);
+  grp('Section and confinement');
+  if (R.type === 'Circular') rows.push(['ds – core diameter (hoop c/l)', f(R.ds, 1), 'mm']);
+  else { rows.push(['bo – core width (hoop c/l)', f(R.bo, 1), 'mm']); rows.push(['ho – core depth (hoop c/l)', f(R.ho, 1), 'mm']); }
+  rows.push(['As longitudinal', f(G.As, 0), 'mm²'], ['Confinement effectiveness ke', f(R.ke, 4), '–'],
+    [`${RHO}cc (long. steel / core)`, f(R.rcc, 5), '–'], [`${RHO}s (volumetric transverse)`, f(R.rhos, 5), '–'],
+    [`${RHO}x`, f(R.rhox, 5), '–'], [`${RHO}y`, f(R.rhoy, 5), '–'],
+    ['flx (effective)', f(R.flx, 3), 'MPa'], ['fly (effective)', f(R.fly, 3), 'MPa']);
+  grp('Concrete');
+  rows.push(['fcc', f(R.fcc, 3), 'MPa'], ['fcc / fco', f(R.fcc / R.fco, 4), '–'], [`${EPS}cc`, f(R.ecc, 5), '–'],
+    ['Ec', f(R.Ec, 0), 'MPa'], ['Esec', f(R.Esec, 0), 'MPa'], ['r', f(R.r, 4), '–'],
+    [`${EPS}cu,c (Priestley)`, f(R.ecuP, 5), '–'], [`${EPS}cu,c (energy balance)`, f(R.ecuE, 5), '–'],
+    [`${EPS}cu,c used`, f(R.ecu, 5), '–'], ['fc at εcu,c', f(R.fcu, 3), 'MPa'], [`${EPS}cu unconfined`, f(R.ecu0, 5), '–'],
+    [`${EPS}y steel`, f(S.ey, 5), '–']);
+  if (MC) {
+    grp('Moment–curvature');
+    rows.push(['M-phi: concrete', MC.concrete, ''], ['N / (Ag fco)', f(MC.nu, 3), '–'],
+      [`M'y – first yield (${MC.yieldBy})`, f(MC.MY1, 1), 'kNm'], [`φ'y – first yield`, f(MC.phiY1, 5), '1/m'],
+      ['Mn – nominal (εc 0.004 / εs 0.015)', f(MC.Mn, 1), 'kNm'], ['φy – idealized yield', f(MC.phiY, 5), '1/m'],
+      ['Mmax', f(MC.Mmax, 1), 'kNm'], ['φu – ultimate', f(MC.phiU, 5), '1/m'], ['Mu – at ultimate', f(MC.MU, 1), 'kNm'],
+      ['μφ = φu / φy', f(MC.mu, 2), '–'], ['Ultimate governed by', MC.governs, '']);
+  }
+  if (NM) {
+    grp('N–M interaction');
+    rows.push(['N-M: method', NM.method, '']);
+    for (const c of NM.curves.filter(c => c.main)) rows.push(
+      [`${c.short}: N0 pure compression`, f(c.N0, 0), 'kN'], [`${c.short}: Nt pure tension`, f(c.Nt, 0), 'kN'],
+      [`${c.short}: balance point Nb`, f(c.Nb, 0), 'kN'], [`${c.short}: balance point Mb`, f(c.Mb, 1), 'kNm'],
+      [`${c.short}: M at N = ${NM.Ncur} kN`, f(c.Mcur, 1), 'kNm']);
+  }
+  return rows;
+}
+function fillTable(id, rows, head = true) {
+  $(id).innerHTML = (head ? '<tr><th>Parameter</th><th>Value</th><th>Unit</th></tr>' : '') +
+    rows.map(r => r.length === 1 ? `<tr class="grp"><td colspan="3">${r[0]}</td></tr>` : `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('');
+}
+
+/* ---------------- compute */
+let last = null, nmBusy = false;
+let secView = null;              // { p, G } drawn in the cross-section: follows the inputs
+const redrawSection = () => { if (secView) drawSection(secView.p, secView.G); };
+
+// inputs only refresh the form (enabled fields, core size, tie rows) and the
+// cross-section; the calculation runs when COMPUTE is pressed
+function inputsChanged(msg = 'Inputs changed – press COMPUTE to update the results.') {
+  refreshEnable();
+  let note = '';
+  try {
+    const p = readInputs(); renderTieTable(); refreshEnable();
+    secView = { p, G: Engine.previewGeometry(p) }; redrawSection();
+  } catch (e) { note = '\nCross-section not updated: ' + friendly(e.message); }
+  status('stale', msg + note);
+  $('staleRes').textContent = 'Results are for the previous inputs – press COMPUTE';
+  $('btnRun').classList.add('pending'); $('runHint').classList.add('pending');
+  $('runHint').textContent = 'Inputs changed – press COMPUTE to update the results.';
+}
+function clearStale() {
+  $('staleRes').textContent = '';
+  $('btnRun').classList.remove('pending'); $('runHint').classList.remove('pending');
+  $('runHint').textContent = 'Change the inputs, then press COMPUTE.';
+}
+const activeTab = () => +document.querySelector('.tab.active').dataset.tab;
+
+function friendly(msg) { return msg.replace(/The input "(\w+)"/, (m, k) => `The input "${LABELS[k] || k}"`); }
+
+function compute() {
+  clearStale();
+  refreshEnable();
+  let p;
+  try {
+    p = readInputs();
+    renderTieTable(); refreshEnable();
+    const { R, C, S, G } = Engine.manderModel(p);
+    let MC = null, wMC = [];
+    try { MC = Engine.momentCurvature(p, R, S, G); wMC = MC.warnings; }
+    catch (e) { wMC = ['Moment-curvature: ' + e.message]; }
+    last = { inputs: p, results: R, concrete: C, steel: S, geometry: G, mphi: MC, nm: null };
+    secView = { p, G };
+    plotConcrete(R, C); plotSteel(S); plotMC(MC); redrawSection();
+    const W = [...R.warnings, ...wMC];
+    status(W.length ? 'warn' : 'ok', W.length ? 'Warnings:\n' + W.join('\n') : 'Computation OK.');
+    updateTables();
+    computeNM();                                  // N–M follows on the same button
+  } catch (e) {
+    last = null;
+    status('err', 'Error: ' + friendly(e.message) + '\nPlots and tables still show the last valid input.');
+  }
+}
+
+function computeNM() {
+  if (!last || nmBusy) return;
+  nmBusy = true;
+  const prev = { cls: $('statusbar').className, txt: $('stxt').textContent };
+  status('running', 'Calculating the N–M interaction diagram…');
+  setTimeout(() => {
+    let cls, txt;
+    try {
+      const NM = Engine.nmDiagram(last.inputs, last.results, last.steel, last.geometry);
+      last.nm = NM; last.nmErr = null;
+      plotNM(NM);
+      const W = NM.warnings;
+      cls = prev.cls === 'ok' && W.length ? 'warn' : prev.cls; txt = prev.txt + (W.length ? '\n' + W.join('\n') : '');
+    } catch (e) {
+      last.nmErr = e.message;
+      plotNM(null);
+      cls = 'warn'; txt = prev.txt + '\nN-M interaction: ' + e.message;
+    }
+    // inputs edited in the meantime: keep the "inputs changed" message
+    if (!isStale()) status(cls, txt);
+    updateTables();
+    nmBusy = false;
+  }, 30);
+}
+const isStale = () => $('btnRun').classList.contains('pending');
+const staleNote = () => isStale() ? ' – from the last COMPUTE; the inputs have changed since' : '';
+
+function updateTables() {
+  if (!last) return;
+  const { results: R, steel: S, geometry: G, mphi: MC, nm: NM } = last;
+  const all = resultRows(R, S, G, MC, NM);
+  fillTable('tblAll', all);
+  const sect = (name) => { const i = all.findIndex(r => r.length === 1 && r[0] === name); if (i < 0) return []; const out = []; for (let j = i + 1; j < all.length && all[j].length > 1; j++) out.push(all[j]); return out; };
+  fillTable('tblConf', [...sect('Section and confinement'), ...sect('Concrete')]);
+  fillTable('tblMC', sect('Moment–curvature'));
+  fillTable('tblNM', NM ? sect('N–M interaction') : [[last.nmErr ? 'Not available: ' + last.nmErr : 'Calculating…', '', '']]);
+  const W = [...R.warnings, ...(MC ? MC.warnings : []), ...(NM ? NM.warnings : [])];
+  $('wlist').className = 'wlist' + (W.length ? '' : ' none');
+  $('wlist').innerHTML = W.length ? W.map(w => `<li>${w}</li>`).join('') : '<li>No warnings.</li>';
+}
+
+/* ---------------- export */
+function download(name, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
+// inputs that apply to a computed case (same rules as refreshEnable)
+function relevant(k, p) {
+  const cmp = p.nmMethod === 'Compare all three';
+  if (k === 'fu') return p.steelModel !== 'Elastic-perfectly plastic';
+  if (k === 'esh' || k === 'Esh') return p.steelModel === 'Mander (1984)';
+  if (k === 'ecuUser') return p.ecuMethod === 'User-defined';
+  if (k === 'Usf') return p.ecuMethod === 'Energy balance';
+  if (k === 'ecLim') return cmp || p.nmMethod === 'Strain compatibility';
+  if (k === 'gc' || k === 'gs' || k === 'acc') return cmp || p.nmMethod === 'EC2 design';
+  return true;
+}
+// everything from last.inputs, so the sheet matches the results even after the form was edited
+function inputRows() {
+  const p = last.inputs, circ = p.type === 'Circular';
+  const r = [['Program', 'Mander_MomentCurvature_NM (HTML) v' + VER, ''], ['Exported', new Date().toISOString().slice(0, 16).replace('T', ' '), ''], ['Section type', p.type, '']];
+  if (circ) r.push(['Transverse reinforcement', p.trans, '']);
+  r.push(['Clear cover to hoop', p.cover, 'mm']);
+  if (circ) {
+    r.push(['D – section diameter', p.Dw, 'mm'], [`ds – core diameter, hoop c/l (${p.coreAutoC ? 'calculated' : 'user value'})`, p.ds, 'mm']);
+    p.barsC.forEach((b, i) => r.push([`Bars, Group ${i + 1}`, `${b[0]} ${PHI} ${b[1]}`, 'mm']));
+  } else {
+    const src = p.coreAutoR ? 'calculated' : 'user value', nl = p.barsR.length;
+    r.push(['b – section width, x', p.bw, 'mm'], ['h – section depth, y', p.hw, 'mm'],
+      [`bo – core width, hoop c/l (${src})`, p.bc, 'mm'], [`ho – core depth, hoop c/l (${src})`, p.dc, 'mm']);
+    p.barsR.forEach((b, i) => {
+      const nm = i === 0 ? 'Top' : (i === nl - 1 ? 'Bottom' : `Line ${i + 1}`);
+      const t = i === 0 || i === nl - 1 ? 'perimeter hoop' : (p.tieR[i] ? 'cross-tie' : 'no cross-tie');
+      r.push([`Bar line ${nm}`, `${b[0]} ${PHI} ${b[1]}, ${t}`, 'mm']);
+    });
+    const vt = p.tieV.map((t, k) => t ? `Bar ${k + 2}` : null).filter(Boolean);
+    r.push(['Vertical ties at top-line bars', p.tieV.length ? (vt.join(', ') || 'none') : 'none (no inner bars in the top line)', ''],
+      ['Legs parallel to x (hoop + ties)', p.nlx, '–'], ['Legs parallel to y (hoop + ties)', p.nly, '–']);
+  }
+  const seq = [['fco', 'fco – unconfined strength', 'MPa'], ['eco', 'εco – strain at fco', '–'], ['ecu0', 'εcu – ultimate strain, unconfined', '–'],
+    ['Ec', 'Ec – concrete modulus' + (p.EcAuto ? ' (calculated, 5000√fco)' : ''), 'MPa'], ['dbh', 'ø hoop / spiral / ties', 'mm'],
+    ['s', 's – centre-to-centre spacing', 'mm'], ['fyh', 'fyh – yield strength', 'MPa'], ['esuh', 'εsuh – strain at max. stress', '–'],
+    ['steelModel', 'Longitudinal steel model', ''], ['Es', 'Es – elastic modulus', 'MPa'], ['fy', 'fy – yield strength', 'MPa'],
+    ['fu', 'fu – tensile strength', 'MPa'], ['esh', 'εsh – start of hardening', '–'], ['Esh', 'Esh – hardening modulus', 'MPa'],
+    ['esu', 'εsu – strain at fu', '–'], ['ecuMethod', 'εcu,c method', ''], ['Usf', 'Usf – hoop fracture energy', 'MJ/m3'],
+    ['ecuUser', 'εcu,c – user value', '–'], ['Nax', 'N – axial load, compression +', 'kN'], ['mcConcrete', 'Moment-curvature concrete', ''],
+    ['nmMethod', 'N-M interaction method', ''], ['ecLim', 'εc,lim – strain compatibility', '–'], ['gc', 'γc – EC2', '–'],
+    ['gs', 'γs – EC2', '–'], ['acc', 'αcc – EC2', '–']];
+  for (const [k, name, u] of seq) if (relevant(k, p)) r.push([name, k === 'Ec' ? Math.round(p.Ec) : p[k], u]);
+  return r;
+}
+const pad = (a, n) => { const v = a.slice(); while (v.length < n) v.push(null); return v; };
+function exportExcel() {
+  if (!last) { status('err', 'Nothing to export: fix the input error first.'); return; }
+  if (typeof XLSX === 'undefined') { status('err', 'Excel export needs the SheetJS library (internet connection). Use Export JSON instead.'); return; }
+  const go = () => {
+    const wb = XLSX.utils.book_new();
+    const add = (name, aoa) => XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), name);
+    add('Inputs', [['Input', 'Value', 'Unit'], ...inputRows()]);
+    const { results: R, steel: S, geometry: G, mphi: MC, nm: NM, concrete: C } = last;
+    const res = [['Parameter', 'Value', 'Unit'], ...resultRows(R, S, G, MC, NM).filter(r => r.length > 1)];
+    [...R.warnings, ...(MC ? MC.warnings : []), ...(NM ? NM.warnings : [])].forEach(w => res.push(['Warning', w, '']));
+    add('Results', res);
+    const n = Math.max(C.e_conf.length, C.e_unc.length, S.e.length);
+    const cols = [C.e_conf, C.f_conf, C.e_unc, C.f_unc, S.e, S.f].map(a => pad(a, n));
+    add('Mander', [['Strain confined (-)', 'Stress confined (MPa)', 'Strain unconfined (-)', 'Stress unconfined (MPa)', 'Strain steel (-)', 'Stress steel (MPa)'],
+      ...cols[0].map((v, i) => cols.map(c => c[i]))]);
+    if (MC) add('Moment-curvature', [['Curvature (1/m)', 'Moment (kNm)', 'Neutral axis depth c (mm)', 'Top fibre strain (-)', 'Extreme tension bar strain (-)'],
+      ...MC.phi.map((v, i) => [v, MC.M[i], MC.c[i], MC.etop[i], MC.esT[i]])]);
+    if (NM) {
+      const m = Math.max(...NM.curves.map(c => c.N.length));
+      const head = [], cs = [];
+      NM.curves.forEach(c => { head.push(c.name + ' - N (kN)', c.name + ' - M (kNm)'); cs.push(pad(c.N.map(v => Number.isFinite(v) ? v : null), m), pad(c.M.map(v => Number.isFinite(v) ? v : null), m)); });
+      add('N-M', [head, ...cs[0].map((v, i) => cs.map(c => c[i]))]);
+    }
+    XLSX.writeFile(wb, 'Mander_results.xlsx');
+    appendStatus('Exported Mander_results.xlsx' + staleNote());
+  };
+  if (!last.nm && !last.nmErr) { computeNM(); setTimeout(function wait() { if (nmBusy) setTimeout(wait, 50); else go(); }, 60); } else go();
+}
+function exportJSON() {
+  if (!last) { status('err', 'Nothing to export: fix the input error first.'); return; }
+  download('Mander_results.json', new Blob([JSON.stringify(last, (k, v) => (typeof v === 'number' && !Number.isFinite(v)) ? null : v, 1)], { type: 'application/json' }));
+  appendStatus('Exported Mander_results.json' + staleNote());
+}
+function savePNG() {
+  const t = activeTab(), ids = { 0: ['secCanvas', 'chC', 'chS'], 1: ['chM'], 2: ['chNM'] }[t] || [];
+  if (!ids.length) { status($('statusbar').className, $('stxt').textContent + '\nOpen a tab with figures to save them.'); return; }
+  ids.forEach(id => { const cv = $(id); cv.toBlob(b => download(`Mander_${id}.png`, b), 'image/png'); });
+  appendStatus(`Saved ${ids.length} figure(s) as PNG` + (isStale() && t !== 0 ? staleNote() : isStale() ? ' – the cross-section shows the current inputs, the plots the last COMPUTE' : ''));
+}
+
+/* ---------------- project file (all inputs, no results) */
+const PROG = 'Mander_MomentCurvature_NM';
+const appendStatus = txt => status($('statusbar').className, $('stxt').textContent + '\n' + txt);
+function projectData() {
+  const inputs = {};
+  document.querySelectorAll('#sidebar input[id], #sidebar select[id]').forEach(el => {
+    if (el.id === 'nlx' || el.id === 'nly') return;               // derived from the tie tables
+    inputs[el.id] = el.type === 'checkbox' ? el.checked : el.tagName === 'SELECT' ? el.value : (el.value === '' ? null : +el.value);
+  });
+  return { program: PROG, file: 'project', version: VER, saved: new Date().toISOString(), inputs,
+    barsC: barsC.map(b => ({ n: b.n, d: b.d })), barsR: barsR.map(b => ({ n: b.n, d: b.d, tie: b.tie })),
+    tieV: tieV.map(t => t.tie) };
+}
+async function saveProject() {
+  const txt = JSON.stringify(projectData(), (k, v) => (typeof v === 'number' && !Number.isFinite(v)) ? null : v, 1);
+  const blob = new Blob([txt], { type: 'application/json' }), name = PROG + '_project.json';
+  if (window.showSaveFilePicker) {                // Chrome / Edge: choose the name and folder
+    try {
+      const h = await window.showSaveFilePicker({ suggestedName: name, types: [{ description: 'Project file', accept: { 'application/json': ['.json'] } }] });
+      const w = await h.createWritable(); await w.write(blob); await w.close();
+      appendStatus('Project saved: ' + h.name); return;
+    } catch (e) { if (e.name === 'AbortError') return; }   // other errors: fall back to a download
+  }
+  download(name, blob); appendStatus('Project saved as ' + name + ' (Downloads folder)');
+}
+function openProject(file) {
+  file.text().then(t => loadProject(t, file.name), () => status('err', `Open project: ${file.name} could not be read.`));
+}
+function loadProject(text, fname) {
+  let d;
+  try { d = JSON.parse(text); } catch (e) { status('err', `Open project: ${fname} is not a valid JSON file. Nothing was changed.`); return; }
+  const okBars = (a, nmin) => Array.isArray(a) && a.length >= nmin && a.every(b => b && typeof b === 'object');
+  if (!d || d.program !== PROG || !d.inputs || typeof d.inputs !== 'object' || !okBars(d.barsC, 1) || !okBars(d.barsR, 2)) {
+    status('err', `Open project: ${fname} is not a ${PROG} project file. Nothing was changed.`); return;
+  }
+  const skipped = [];
+  for (const [k, v] of Object.entries(d.inputs)) {
+    const el = document.getElementById(k);
+    if (!el || !el.closest('#sidebar') || !/^(INPUT|SELECT)$/.test(el.tagName) || k === 'nlx' || k === 'nly') { skipped.push(k); continue; }
+    if (el.type === 'checkbox') el.checked = !!v;
+    else if (el.tagName === 'SELECT') { if ([...el.options].some(o => o.value === v)) el.value = v; else skipped.push(k); }
+    else el.value = (v === null || v === '' || !Number.isFinite(+v)) ? '' : String(+v);
+  }
+  const numOr = v => (v === null || v === '' || !Number.isFinite(+v)) ? NaN : +v;
+  barsC = d.barsC.map(b => ({ n: numOr(b.n), d: numOr(b.d) }));
+  barsR = d.barsR.map(b => ({ n: numOr(b.n), d: numOr(b.d), tie: !!b.tie }));
+  tieV = (Array.isArray(d.tieV) ? d.tieV : []).map(t => ({ x: 0, ok: true, tie: !!t }));   // positions follow from the inputs
+  tieSig = null;
+  renderTables();
+  inputsChanged(`Project loaded: ${fname} – press COMPUTE to calculate.` + (skipped.length ? `\nIgnored entries: ${skipped.join(', ')}` : ''));
+}
+
+/* ---------------- wiring */
+function init() {
+  mkChart('chC', 'Strain εc', 'Stress fc (MPa)');
+  mkChart('chS', 'Strain εs', 'Stress fs (MPa)');
+  mkChart('chM', 'Curvature φ (1/m)', 'Moment M (kNm)');
+  mkChart('chNM', 'Moment M (kNm)', 'Axial load N (kN, compression +)');
+  renderTables();
+  document.querySelectorAll('#sidebar input, #sidebar select').forEach(el => el.addEventListener('change', () => inputsChanged()));
+  ['tbC', 'tbR', 'tbV'].forEach(id => $(id).addEventListener('change', onTableInput));
+  $('addC').onclick = () => { barsC.push({ n: 4, d: barsC[barsC.length - 1].d }); renderTables(); inputsChanged(); };
+  $('remC').onclick = () => { if (barsC.length > 1) { barsC.pop(); renderTables(); inputsChanged(); } };
+  $('addR').onclick = () => { const src = barsR.length > 2 ? Object.assign({}, barsR[barsR.length - 2]) : { n: 2, d: barsR[barsR.length - 1].d, tie: true }; barsR.splice(barsR.length - 1, 0, src); renderTables(); inputsChanged(); };
+  $('remR').onclick = () => { if (barsR.length > 2) { barsR.splice(barsR.length - 2, 1); renderTables(); inputsChanged(); } };
+  $('btnRun').onclick = () => { compute(); };
+  $('btnXls').onclick = exportExcel; $('btnJson').onclick = exportJSON; $('btnPng').onclick = savePNG;
+  $('btnSaveP').onclick = saveProject;
+  $('btnOpenP').onclick = () => { $('fileOpenP').value = ''; $('fileOpenP').click(); };
+  $('fileOpenP').addEventListener('change', e => { const f = e.target.files[0]; if (f) openProject(f); });
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x === t));
+    document.querySelectorAll('.tabpanel').forEach((p, i) => p.classList.toggle('active', i === +t.dataset.tab));
+    if (+t.dataset.tab === 0) redrawSection();
+  }));
+  new ResizeObserver(redrawSection).observe($('secCanvasWrap'));
+  compute();
+}
+if (typeof Chart === 'undefined') status('err', 'Chart.js could not be loaded (no internet connection?). The calculation needs it for the plots.');
+else init();
+</script>
+</body>
+</html>
